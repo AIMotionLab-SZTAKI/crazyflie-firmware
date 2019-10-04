@@ -158,7 +158,7 @@ PROJ_OBJ += position_estimator_altitude.o position_controller_pid.o
 PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller.o controller_pid.o controller_mellinger.o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o
-PROJ_OBJ += estimator_kalman.o kalman_core.o
+PROJ_OBJ += estimator_kalman.o kalman_core.o kalman_supervisor.o
 
 # High-Level Commander
 PROJ_OBJ += crtp_commander_high_level.o planner.o pptraj.o
@@ -174,7 +174,6 @@ PROJ_OBJ += deck_spi.o
 
 # Decks
 PROJ_OBJ += bigquad.o
-PROJ_OBJ += rzr.o
 PROJ_OBJ += ledring12.o
 PROJ_OBJ += buzzdeck.o
 PROJ_OBJ += gtgps.o
@@ -191,6 +190,7 @@ PROJ_OBJ += flowdeck_v1v2.o
 PROJ_OBJ += oa.o
 PROJ_OBJ += multiranger.o
 PROJ_OBJ += lighthouse.o
+PROJ_OBJ += activeMarkerDeck.o
 
 ifeq ($(LPS_TDOA_ENABLE), 1)
 CFLAGS += -DLPS_TDOA_ENABLE
@@ -218,6 +218,7 @@ endif
 #Deck tests
 PROJ_OBJ += exptest.o
 PROJ_OBJ += exptestRR.o
+PROJ_OBJ += exptestBolt.o
 #PROJ_OBJ += bigquadtest.o
 #PROJ_OBJ += uarttest.o
 
