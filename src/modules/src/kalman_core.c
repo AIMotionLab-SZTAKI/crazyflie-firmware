@@ -64,6 +64,7 @@
 #include "log.h"
 #include "param.h"
 #include "math3d.h"
+#include "debug.h"
 
 // #define DEBUG_STATE_CHECK
 
@@ -90,7 +91,7 @@ static inline float arm_sqrt(float32_t in)
 
 
 #ifdef DEBUG_STATE_CHECK
-static void assertStateNotNaN(kalmanCoreData_t* this) {
+static void assertStateNotNaN(const kalmanCoreData_t* this) {
   if ((isnan(this->S[KC_STATE_X])) ||
       (isnan(this->S[KC_STATE_Y])) ||
       (isnan(this->S[KC_STATE_Z])) ||
@@ -119,7 +120,7 @@ static void assertStateNotNaN(kalmanCoreData_t* this) {
   }
 }
 #else
-static void assertStateNotNaN(kalmanCoreData_t* this)
+static void assertStateNotNaN(const kalmanCoreData_t* this)
 {
   return;
 }
@@ -288,7 +289,7 @@ static void scalarUpdate(kalmanCoreData_t* this, arm_matrix_instance_f32 *Hm, fl
 }
 
 
-void kalmanCoreUpdateWithBaro(kalmanCoreData_t* this, baro_t *baro, bool quadIsFlying)
+void kalmanCoreUpdateWithBaro(kalmanCoreData_t* this, float baroAsl, bool quadIsFlying)
 {
   float h[KC_STATE_DIM] = {0};
   arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
@@ -297,10 +298,10 @@ void kalmanCoreUpdateWithBaro(kalmanCoreData_t* this, baro_t *baro, bool quadIsF
 
   if (!quadIsFlying || this->baroReferenceHeight < 1) {
     //TODO: maybe we could track the zero height as a state. Would be especially useful if UWB anchors had barometers.
-    this->baroReferenceHeight = baro->asl;
+    this->baroReferenceHeight = baroAsl;
   }
 
-  float meas = (baro->asl - this->baroReferenceHeight);
+  float meas = (baroAsl - this->baroReferenceHeight);
   scalarUpdate(this, &H, meas - this->S[KC_STATE_Z], measNoiseBaro);
 }
 
@@ -461,7 +462,7 @@ static float predictedNY;
 static float measuredNX;
 static float measuredNY;
 
-void kalmanCoreUpdateWithFlow(kalmanCoreData_t* this, flowMeasurement_t *flow, sensorData_t *sensors)
+void kalmanCoreUpdateWithFlow(kalmanCoreData_t* this, const flowMeasurement_t *flow, const Axis3f *gyro)
 {
   // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -472,8 +473,8 @@ void kalmanCoreUpdateWithFlow(kalmanCoreData_t* this, flowMeasurement_t *flow, s
   float thetapix = DEG_TO_RAD * 4.2f;
   //~~~ Body rates ~~~
   // TODO check if this is feasible or if some filtering has to be done
-  float omegax_b = sensors->gyro.x * DEG_TO_RAD;
-  float omegay_b = sensors->gyro.y * DEG_TO_RAD;
+  float omegax_b = gyro->x * DEG_TO_RAD;
+  float omegay_b = gyro->y * DEG_TO_RAD;
 
   // ~~~ Moves the body velocity into the global coordinate system ~~~
   // [bar{x},bar{y},bar{z}]_G = R*[bar{x},bar{y},bar{z}]_B
@@ -556,6 +557,97 @@ void kalmanCoreUpdateWithTof(kalmanCoreData_t* this, tofMeasurement_t *tof)
   }
 }
 
+void kalmanCoreUpdateWithYawError(kalmanCoreData_t *this, yawErrorMeasurement_t *error)
+{
+    float h[KC_STATE_DIM] = {0};
+    arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
+
+    h[KC_STATE_D2] = 1;
+    scalarUpdate(this, &H, this->S[KC_STATE_D2] - error->yawError, error->stdDev);
+}
+
+void kalmanCoreUpdateWithSweepAngles(kalmanCoreData_t *this, sweepAngleMeasurement_t *angles)
+{
+    // Get rotation matrix and invert it (to get the global to local rotation matrix)
+    arm_matrix_instance_f32 basestation_rotation_matrix = {3, 3, (float32_t *)angles->geometry.mat};
+
+    float bs_r_inv[3][3];
+    arm_matrix_instance_f32 basestation_rotation_matrix_inv = {3, 3, (float32_t *)bs_r_inv};
+    arm_mat_inverse_f32(&basestation_rotation_matrix, &basestation_rotation_matrix_inv);
+
+    // Get the current state values of the position of the crazyflie and calculate the difference between
+    // the base stations and the CF.
+    float pos_x = this->S[KC_STATE_X];;
+    float pos_y = this->S[KC_STATE_Y];;
+    float pos_z = this->S[KC_STATE_Z];;
+
+    float dx = pos_x - angles->geometry.origin[0];
+    float dy = pos_y - angles->geometry.origin[1];
+    float dz = pos_z - angles->geometry.origin[2];
+
+    // Rotate the difference in position to be relative to the basestation
+    vec3d position_diff = {dx, dy, dz};
+    vec3d position_diff_rotated = {0, 0, 0};
+    arm_matrix_instance_f32 vec_pos_diff = {3, 1, position_diff};
+    arm_matrix_instance_f32 vec_pos_diff_rot = {3, 1, position_diff_rotated};
+    arm_mat_mult_f32(&basestation_rotation_matrix_inv, &vec_pos_diff, &vec_pos_diff_rot);
+
+    float dx_rot = position_diff_rotated[0];
+    float dy_rot = position_diff_rotated[1];
+    float dz_rot = position_diff_rotated[2];
+
+    // Retrieve the measured sweepangles
+    float measuredSweepAngleHorizontal = angles->angleX;
+    float measuredSweepAngleVertical =angles->angleY;
+
+    // Get the predicted sweep angles based on the relative difference in position
+    if(dx_rot != 0)
+    {
+      float predictedSweepAngleHorizontal = atan2(dy_rot, dx_rot);
+      float predictedSweepAngleVertical = atan2(dz_rot, dx_rot);
+
+
+      // Calculations for measurement model with rotation
+      /*float r00= bs_r_inv[0][0];
+      float r01= bs_r_inv[0][1];
+      float r02= bs_r_inv[0][2];
+      float r10= bs_r_inv[1][0];
+      float r11= bs_r_inv[1][1];
+      float r12= bs_r_inv[1][2];
+      float r20= bs_r_inv[2][0];
+      float r21= bs_r_inv[2][1];
+      float r22= bs_r_inv[2][2];
+
+      float temp1 = dx*r00+dy*r01+dz*r02;
+      float temp2 = dx*r10+dy*r11+dz*r12;
+      float temp3= dx*r20+dy*r21+dz*r22;*/
+
+      // Input the measurement model of the H matrix
+      float h_hor[KC_STATE_DIM] = {0};
+      arm_matrix_instance_f32 H_hor = {1, KC_STATE_DIM, h_hor};
+      h_hor[KC_STATE_X] = (-1*dy_rot) / (dx_rot * dx_rot + dy_rot * dy_rot);
+      h_hor[KC_STATE_Y] = dx_rot / (dx_rot * dx_rot + dy_rot * dy_rot);
+
+      // Calculations for measurement model with rotation
+      /*h_hor[KC_STATE_X] = ((r10/temp1)-(temp2*r00)/(temp1*temp1))/((temp2*temp2)/(temp1*temp1)+1);
+      h_hor[KC_STATE_Y] = ((r11/temp1)-(temp2*r01)/(temp1*temp1))/((temp2*temp2)/(temp1*temp1)+1);
+      h_hor[KC_STATE_Z] =  ((r12/temp1)-(temp2*r02)/(temp1*temp1))/((temp2*temp2)/(temp1*temp1)+1);*/
+
+      float h_ver[KC_STATE_DIM] = {0};
+      arm_matrix_instance_f32 H_ver = {1, KC_STATE_DIM, h_ver};
+      h_ver[KC_STATE_X] = (-1*dz_rot) / (dx_rot * dx_rot + dz_rot * dz_rot);
+      h_ver[KC_STATE_Z] = dx_rot / (dx_rot * dx_rot + dz_rot * dz_rot);
+
+      /*h_hor[KC_STATE_X] = ((r20/temp1)-(temp3*r00)/(temp1*temp1))/((temp3*temp3)/(temp1*temp1)+1);
+      h_hor[KC_STATE_Y] = ((r21/temp1)-(temp3*r01)/(temp1*temp1))/((temp3*temp3)/(temp1*temp1)+1);
+      h_hor[KC_STATE_Z] = ((r22/temp1)-(temp3*r02)/(temp1*temp1))/((temp3*temp3)/(temp1*temp1)+1);*/
+
+
+      // Two scalar updates for both sweepangles
+      scalarUpdate(this, &H_hor, measuredSweepAngleHorizontal - predictedSweepAngleHorizontal, angles->stdDevX);
+      scalarUpdate(this, &H_ver, measuredSweepAngleVertical - predictedSweepAngleVertical, angles->stdDevY);
+    }
+}
 
 void kalmanCorePredict(kalmanCoreData_t* this, float cmdThrust, Axis3f *acc, Axis3f *gyro, float dt, bool quadIsFlying)
 {
@@ -831,7 +923,7 @@ void kalmanCoreAddProcessNoise(kalmanCoreData_t* this, float dt)
 
 
 
-void kalmanCoreFinalize(kalmanCoreData_t* this, sensorData_t *sensors, uint32_t tick)
+void kalmanCoreFinalize(kalmanCoreData_t* this, uint32_t tick)
 {
   // Matrix to rotate the attitude covariances once updated
   static float A[KC_STATE_DIM][KC_STATE_DIM];
@@ -945,7 +1037,7 @@ void kalmanCoreFinalize(kalmanCoreData_t* this, sensorData_t *sensors, uint32_t 
   assertStateNotNaN(this);
 }
 
-void kalmanCoreExternalizeState(kalmanCoreData_t* this, state_t *state, sensorData_t *sensors, uint32_t tick)
+void kalmanCoreExternalizeState(const kalmanCoreData_t* this, state_t *state, const Axis3f *acc, uint32_t tick)
 {
   // position state is already in world frame
   state->position = (point_t){
@@ -968,9 +1060,9 @@ void kalmanCoreExternalizeState(kalmanCoreData_t* this, state_t *state, sensorDa
   // Finally, note that these accelerations are in Gs, and not in m/s^2, hence - 1 for removing gravity
   state->acc = (acc_t){
       .timestamp = tick,
-      .x = this->R[0][0]*sensors->acc.x + this->R[0][1]*sensors->acc.y + this->R[0][2]*sensors->acc.z,
-      .y = this->R[1][0]*sensors->acc.x + this->R[1][1]*sensors->acc.y + this->R[1][2]*sensors->acc.z,
-      .z = this->R[2][0]*sensors->acc.x + this->R[2][1]*sensors->acc.y + this->R[2][2]*sensors->acc.z - 1
+      .x = this->R[0][0]*acc->x + this->R[0][1]*acc->y + this->R[0][2]*acc->z,
+      .y = this->R[1][0]*acc->x + this->R[1][1]*acc->y + this->R[1][2]*acc->z,
+      .z = this->R[2][0]*acc->x + this->R[2][1]*acc->y + this->R[2][2]*acc->z - 1
   };
 
   // convert the new attitude into Euler YPR
