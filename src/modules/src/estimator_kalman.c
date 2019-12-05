@@ -237,13 +237,13 @@ static Axis3f gyroSnapshot; // A snpashot of the latest gyro data, used by the t
 static Axis3f accSnapshot; // A snpashot of the latest acc data, used by the task
 
 // Statistics
-static statsCntRate_t statsUpdates;
-static statsCntRate_t statsPredictions;
-static statsCntRate_t statsBaroUpdates;
-static statsCntRate_t statsFinalize;
-static statsCntRate_t statsUMeasurementAppended;
-static statsCntRate_t statsUMeasurementNotAppended;
-static void updateStats(uint32_t now_ms);
+#define ONE_SECOND 1000
+static STATS_CNT_RATE_DEFINE(updateCounter, ONE_SECOND);
+static STATS_CNT_RATE_DEFINE(predictionCounter, ONE_SECOND);
+static STATS_CNT_RATE_DEFINE(baroUpdateCounter, ONE_SECOND);
+static STATS_CNT_RATE_DEFINE(finalizeCounter, ONE_SECOND);
+static STATS_CNT_RATE_DEFINE(measurementAppendedCounter, ONE_SECOND);
+static STATS_CNT_RATE_DEFINE(measurementNotAppendedCounter, ONE_SECOND);
 
 #ifdef KALMAN_USE_BARO_UPDATE
 static const bool useBaroUpdate = true;
@@ -266,7 +266,7 @@ static inline float arm_sqrt(float32_t in)
 
 static void kalmanTask(void* parameters);
 static bool predictStateForward(uint32_t osTick, float dt);
-static bool updateQueuedMeasurments(const Axis3f *gyro);
+static bool updateQueuedMeasurments(const Axis3f *gyro, const uint32_t tick);
 
 
 // --------------------------------------------------
@@ -287,14 +287,6 @@ void estimatorKalmanTaskInit() {
 
   dataMutex = xSemaphoreCreateMutex();
 
-  const uint32_t now_ms = T2M(xTaskGetTickCount());
-  statsCntReset(&statsUpdates, now_ms);
-  statsCntReset(&statsPredictions, now_ms);
-  statsCntReset(&statsBaroUpdates, now_ms);
-  statsCntReset(&statsFinalize, now_ms);
-  statsCntReset(&statsUMeasurementAppended, now_ms);
-  statsCntReset(&statsUMeasurementNotAppended, now_ms);
-
   xTaskCreate(kalmanTask, KALMAN_TASK_NAME, 3 * configMINIMAL_STACK_SIZE, NULL, KALMAN_TASK_PRI, NULL);
 
   isInit = true;
@@ -311,7 +303,6 @@ static void kalmanTask(void* parameters) {
   uint32_t nextPrediction = xTaskGetTickCount();
   uint32_t lastPNUpdate = xTaskGetTickCount();
   uint32_t nextBaroUpdate = xTaskGetTickCount();
-  uint32_t nextStatsUpdate = 0;
 
   while (true) {
     xSemaphoreTake(runTaskSemaphore, portMAX_DELAY);
@@ -337,7 +328,7 @@ static void kalmanTask(void* parameters) {
       if (predictStateForward(osTick, dt)) {
         lastPrediction = osTick;
         doneUpdate = true;
-        statsCntInc(&statsPredictions);
+        STATS_CNT_RATE_EVENT(&predictionCounter);
       }
 
       nextPrediction = osTick + S2T(1.0f / PREDICT_RATE);
@@ -373,7 +364,7 @@ static void kalmanTask(void* parameters) {
         nextBaroUpdate = osTick + S2T(1.0f / BARO_RATE);
         doneUpdate = true;
 
-        statsCntInc(&statsBaroUpdates);
+        STATS_CNT_RATE_EVENT(&baroUpdateCounter);
       }
     }
 
@@ -382,7 +373,7 @@ static void kalmanTask(void* parameters) {
       xSemaphoreTake(dataMutex, portMAX_DELAY);
       memcpy(&gyro, &gyroSnapshot, sizeof(gyro));
       xSemaphoreGive(dataMutex);
-      doneUpdate = doneUpdate || updateQueuedMeasurments(&gyro);
+      doneUpdate = doneUpdate || updateQueuedMeasurments(&gyro, osTick);
     }
 
     /**
@@ -395,7 +386,7 @@ static void kalmanTask(void* parameters) {
     if (doneUpdate)
     {
       kalmanCoreFinalize(&coreData, osTick);
-      statsCntInc(&statsFinalize);
+      STATS_CNT_RATE_EVENT(&finalizeCounter);
       if (! kalmanSupervisorIsStateWithinBounds(&coreData)) {
         coreData.resetEstimation = true;
         DEBUG_PRINT("State out of bounds, resetting\n");
@@ -410,22 +401,8 @@ static void kalmanTask(void* parameters) {
     kalmanCoreExternalizeState(&coreData, &taskEstimatorState, &accSnapshot, osTick);
     xSemaphoreGive(dataMutex);
 
-    statsCntInc(&statsUpdates);
-
-    if (osTick > nextStatsUpdate) {
-      updateStats(T2M(osTick));
-      nextStatsUpdate = osTick + M2T(1000);
-    }
+    STATS_CNT_RATE_EVENT(&updateCounter);
   }
-}
-
-static void updateStats(uint32_t now_ms) {
-  statsCntRate(&statsUpdates, now_ms);
-  statsCntRate(&statsPredictions, now_ms);
-  statsCntRate(&statsBaroUpdates, now_ms);
-  statsCntRate(&statsFinalize, now_ms);
-  statsCntRate(&statsUMeasurementAppended, now_ms);
-  statsCntRate(&statsUMeasurementNotAppended, now_ms);
 }
 
 void estimatorKalman(state_t *state, sensorData_t *sensors, control_t *control, const uint32_t tick)
@@ -524,7 +501,7 @@ static bool predictStateForward(uint32_t osTick, float dt) {
 }
 
 
-static bool updateQueuedMeasurments(const Axis3f *gyro) {
+static bool updateQueuedMeasurments(const Axis3f *gyro, const uint32_t tick) {
   bool doneUpdate = false;
   /**
    * Sensor measurements can come in sporadically and faster than the stabilizer loop frequency,
@@ -590,7 +567,7 @@ static bool updateQueuedMeasurments(const Axis3f *gyro) {
   sweepAngleMeasurement_t angles;
   while (stateEstimatorHasSweepAnglesPacket(&angles))
   {
-    kalmanCoreUpdateWithSweepAngles(&coreData, &angles);
+    kalmanCoreUpdateWithSweepAngles(&coreData, &angles, tick);
     doneUpdate = true;
   }
 
@@ -638,10 +615,10 @@ static bool appendMeasurement(xQueueHandle queue, void *measurement)
   }
 
   if (result == pdTRUE) {
-    statsCntInc(&statsUMeasurementAppended);
+    STATS_CNT_RATE_EVENT(&measurementAppendedCounter);
     return true;
   } else {
-    statsCntInc(&statsUMeasurementNotAppended);
+    STATS_CNT_RATE_EVENT(&measurementNotAppendedCounter);
     return true;
   }
 }
@@ -753,12 +730,12 @@ LOG_GROUP_START(kalman)
   LOG_ADD(LOG_FLOAT, q2, &coreData.q[2])
   LOG_ADD(LOG_FLOAT, q3, &coreData.q[3])
 
-  LOG_ADD(LOG_FLOAT, rtUpdate, &statsUpdates.result)
-  LOG_ADD(LOG_FLOAT, rtPred, &statsPredictions.result)
-  LOG_ADD(LOG_FLOAT, rtBaro, &statsBaroUpdates.result)
-  LOG_ADD(LOG_FLOAT, rtFinal, &statsFinalize.result)
-  LOG_ADD(LOG_FLOAT, rtApnd, &statsUMeasurementAppended.result)
-  LOG_ADD(LOG_FLOAT, rtRej, &statsUMeasurementNotAppended.result)
+  STATS_CNT_RATE_LOG_ADD(rtUpdate, &updateCounter)
+  STATS_CNT_RATE_LOG_ADD(rtPred, &predictionCounter)
+  STATS_CNT_RATE_LOG_ADD(rtBaro, &baroUpdateCounter)
+  STATS_CNT_RATE_LOG_ADD(rtFinal, &finalizeCounter)
+  STATS_CNT_RATE_LOG_ADD(rtApnd, &measurementAppendedCounter)
+  STATS_CNT_RATE_LOG_ADD(rtRej, &measurementNotAppendedCounter)
 LOG_GROUP_STOP(kalman)
 
 PARAM_GROUP_START(kalman)
