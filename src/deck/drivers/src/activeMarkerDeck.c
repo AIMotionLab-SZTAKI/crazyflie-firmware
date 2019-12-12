@@ -27,8 +27,9 @@
 
 #include "stm32fxxx.h"
 #include "FreeRTOS.h"
-#include "timers.h"
+#include "task.h"
 
+#include "system.h"
 #include "deck.h"
 #include "log.h"
 #include "param.h"
@@ -44,6 +45,9 @@
 #define MEM_ADR_BUTTON_SENSOR 0x02
 #define MEM_ADR_VER 0x10
 
+#define DEFAULT_UPDATE_PERIOD_MS 1000
+#define POLL_UPDATE_PERIOD_MS 10
+
 static bool isInit = false;
 static bool isVerified = false;
 
@@ -55,6 +59,7 @@ static uint8_t requestedId[LED_COUNT] = {1, 3, 4, 2}; // 1 to 4, clockwise
 #define MODE_ON 1
 #define MODE_MODULATED 2
 #define MODE_QUALISYS 3
+#define MODE_UART_TEST 0xff
 #define MODE_BUTTON_RESET 0xff
 
 static uint8_t currentDeckMode = MODE_QUALISYS;
@@ -65,6 +70,11 @@ static uint8_t doPollDeckButtonSensor = 0;
 static uint8_t deckButtonSensorValue = 0;
 static uint32_t nextPollTime = 0;
 static const uint32_t pollIntervall = M2T(100);
+static bool i2cOk = false;
+
+#ifdef ACTIVE_MARKER_DECK_TEST
+static bool activeMarkerDeckCanStart = false;
+#endif
 
 #define DECK_I2C_ADDRESS 0x2E
 #define VERSION_STRING_LEN 12
@@ -77,22 +87,23 @@ enum version_e {
 
 enum version_e deckFwVersion = versionUndefined;
 
-static xTimerHandle timer;
 static char versionString[VERSION_STRING_LEN + 1];
 
-static void timerHandler(xTimerHandle timer);
+static void task(void* param);
 
 static void activeMarkerDeckInit(DeckInfo *info) {
   if (isInit) {
     return;
   }
 
-  timer = xTimerCreate( "activeMarkerDeckTimer", M2T(1000), pdTRUE, NULL, timerHandler);
-  xTimerStart(timer, 100);
+  xTaskCreate(task, "activeMarkerDeck",
+              configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 
+#ifndef ACTIVE_MARKER_DECK_TEST
   memset(versionString, 0, VERSION_STRING_LEN + 1);
-  i2cdevReadReg8(I2C1_DEV, DECK_I2C_ADDRESS, MEM_ADR_VER, VERSION_STRING_LEN, (uint8_t*)versionString);
+  i2cOk = i2cdevReadReg8(I2C1_DEV, DECK_I2C_ADDRESS, MEM_ADR_VER, VERSION_STRING_LEN, (uint8_t*)versionString);
   DEBUG_PRINT("Deck FW %s\n", versionString);
+#endif
 
   isInit = true;
 }
@@ -102,6 +113,7 @@ static bool activeMarkerDeckTest() {
     return false;
   }
 
+#ifndef ACTIVE_MARKER_DECK_TEST
   if (0 == strcmp("Qualisys0.A", versionString)) {
     deckFwVersion = version_0_A;
   } else if (0 == strcmp("Qualisys1.0", versionString)) {
@@ -112,6 +124,10 @@ static bool activeMarkerDeckTest() {
   if (! isVerified) {
     DEBUG_PRINT("Incompatible deck FW\n");
   }
+#else
+  isVerified = true;
+  deckFwVersion = version_1_0;
+#endif
 
   return isVerified;
 }
@@ -147,23 +163,40 @@ static void handleButtonSensorRead() {
   }
 }
 
-static void timerHandler(xTimerHandle timer) {
-  if (isVerified) {
-    handleIdUpdate();
+static void task(void *param) {
+  systemWaitStart();
 
-    if (deckFwVersion >= version_1_0) {
-      handleModeUpdate();
-      handleButtonSensorRead();
-    }
+#ifdef ACTIVE_MARKER_DECK_TEST
+  while (!activeMarkerDeckCanStart) {
+    vTaskDelay(100);
   }
+  i2cOk = i2cdevReadReg8(I2C1_DEV, DECK_I2C_ADDRESS, MEM_ADR_VER, VERSION_STRING_LEN, (uint8_t*)versionString);
+#endif
+
+  while (1) {
+    if (isVerified) {
+      handleIdUpdate();
+
+      if (deckFwVersion >= version_1_0) {
+        handleModeUpdate();
+        handleButtonSensorRead();
+      }
+    }
+
+    int delay = DEFAULT_UPDATE_PERIOD_MS;
+    if (doPollDeckButtonSensor) {
+      delay = POLL_UPDATE_PERIOD_MS;
+    }
+
+    vTaskDelay(M2T(delay));
+  }
+  
 }
 
 static const DeckDriver deck_info = {
   .vid = 0xBC,
   .pid = 0x11,
   .name = "bcActiveM",
-
-  .usedGpio = DECK_USING_SDA | DECK_USING_SCL,
 
   .init = activeMarkerDeckInit,
   .test = activeMarkerDeckTest,
@@ -178,8 +211,14 @@ PARAM_ADD(PARAM_UINT8, left, &requestedId[2])
 PARAM_ADD(PARAM_UINT8, right, &requestedId[3])
 PARAM_ADD(PARAM_UINT8, mode, &requestedDeckMode)
 PARAM_ADD(PARAM_UINT8, poll, &doPollDeckButtonSensor)
+
+#ifdef ACTIVE_MARKER_DECK_TEST
+PARAM_ADD(PARAM_UINT8, canStart, &activeMarkerDeckCanStart)
+#endif
+
 PARAM_GROUP_STOP(activeMarker)
 
 LOG_GROUP_START(activeMarker)
 LOG_ADD(LOG_UINT8, btSns, &deckButtonSensorValue)
+LOG_ADD(LOG_UINT8, i2cOk, &i2cOk)
 LOG_GROUP_STOP(activeMarker)
