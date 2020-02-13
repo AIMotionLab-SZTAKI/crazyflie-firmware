@@ -159,8 +159,8 @@ PROJ_OBJ += vl53l1_register_funcs.o vl53l1_wait.o vl53l1_core_support.o
 # Modules
 PROJ_OBJ += system.o comm.o console.o pid.o crtpservice.o param.o
 PROJ_OBJ += log.o worker.o trigger.o sitaw.o queuemonitor.o msp.o
-PROJ_OBJ += platformservice.o sound_cf2.o extrx.o sysload.o mem_cf2.o
-PROJ_OBJ += range.o app_handler.o
+PROJ_OBJ += platformservice.o sound_cf2.o extrx.o sysload.o mem.o
+PROJ_OBJ += range.o app_handler.o static_mem.o
 
 # Stabilizer modules
 PROJ_OBJ += commander.o crtp_commander.o crtp_commander_rpyt.o
@@ -203,6 +203,7 @@ PROJ_OBJ += oa.o
 PROJ_OBJ += multiranger.o
 PROJ_OBJ += lighthouse.o
 PROJ_OBJ += activeMarkerDeck.o
+PROJ_OBJ += aideck.o
 
 ifeq ($(LPS_TDOA_ENABLE), 1)
 CFLAGS += -DLPS_TDOA_ENABLE
