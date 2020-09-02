@@ -124,7 +124,7 @@ static volatile uint64_t imuIntTimestamp;
 
 static Axis3i16 gyroRaw;
 static Axis3i16 accelRaw;
-static BiasObj gyroBiasRunning;
+NO_DMA_CCM_SAFE_ZERO_INIT static BiasObj gyroBiasRunning;
 static Axis3f  gyroBias;
 #if defined(SENSORS_GYRO_BIAS_CALCULATE_STDDEV) && defined (GYRO_BIAS_LIGHT_WEIGHT)
 static Axis3f  gyroBiasStdDev;
@@ -148,10 +148,10 @@ static bool isAK8963TestPassed = false;
 static bool isLPS25HTestPassed = false;
 
 // Pre-calculated values for accelerometer alignment
-float cosPitch;
-float sinPitch;
-float cosRoll;
-float sinRoll;
+static float cosPitch;
+static float sinPitch;
+static float cosRoll;
+static float sinRoll;
 
 // This buffer needs to hold data from all sensors
 static uint8_t buffer[SENSORS_MPU6500_BUFF_LEN + SENSORS_MAG_BUFF_LEN + SENSORS_BARO_BUFF_LEN] = {0};
