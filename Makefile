@@ -46,6 +46,7 @@ RTOS_DEBUG        ?= 0
 
 LIB = $(CRAZYFLIE_BASE)/src/lib
 FREERTOS = $(CRAZYFLIE_BASE)/vendor/FreeRTOS
+CFLAGS += -DBLOBS_LOC='"$(CRAZYFLIE_BASE)/blobs/"'
 
 # Communication Link
 UART2_LINK        ?= 0
@@ -127,7 +128,7 @@ endif
 
 # Crazyflie sources
 VPATH += $(CRAZYFLIE_BASE)/src/init $(CRAZYFLIE_BASE)/src/hal/src $(CRAZYFLIE_BASE)/src/modules/src $(CRAZYFLIE_BASE)/src/modules/src/lighthouse $(CRAZYFLIE_BASE)/src/utils/src $(CRAZYFLIE_BASE)/src/drivers/bosch/src $(CRAZYFLIE_BASE)/src/drivers/src $(CRAZYFLIE_BASE)/src/platform
-
+VPATH += $(CRAZYFLIE_BASE)/src/utils/src/kve
 
 ############### Source files configuration ################
 
@@ -151,8 +152,9 @@ PROJ_OBJ += usb_bsp.o usblink.o usbd_desc.o usb.o
 
 # Hal
 PROJ_OBJ += crtp.o ledseq.o freeRTOSdebug.o buzzer.o
-PROJ_OBJ += pm_$(CPU).o syslink.o radiolink.o ow_syslink.o proximity.o usec_time.o
+PROJ_OBJ += pm_$(CPU).o syslink.o radiolink.o ow_syslink.o ow_common.o proximity.o usec_time.o
 PROJ_OBJ += sensors.o
+PROJ_OBJ += storage.o
 
 # libdw
 PROJ_OBJ += libdw1000.o libdw1000Spi.o
@@ -177,6 +179,7 @@ PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller.o controller_pid.o controller_mellinger.o controller_indi.o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o
 PROJ_OBJ += estimator_kalman.o kalman_core.o kalman_supervisor.o
+PROJ_OBJ += collision_avoidance.o
 
 # High-Level Commander
 PROJ_OBJ += crtp_commander_high_level.o planner.o pptraj.o pptraj_compressed.o
@@ -256,6 +259,7 @@ PROJ_OBJ += version.o FreeRTOS-openocd.o
 PROJ_OBJ += configblockeeprom.o crc_bosch.o
 PROJ_OBJ += sleepus.o statsCnt.o rateSupervisor.o
 PROJ_OBJ += lighthouse_core.o pulse_processor.o pulse_processor_v1.o pulse_processor_v2.o lighthouse_geometry.o ootx_decoder.o lighthouse_calibration.o lighthouse_deck_flasher.o lighthouse_position_est.o
+PROJ_OBJ += kve_storage.o kve.o
 
 ifeq ($(DEBUG_PRINT_ON_SEGGER_RTT), 1)
 VPATH += $(LIB)/Segger_RTT/RTT
@@ -461,3 +465,5 @@ include $(CRAZYFLIE_BASE)/tools/make/targets.mk
 unit:
 # The flag "-DUNITY_INCLUDE_DOUBLE" allows comparison of double values in Unity. See: https://stackoverflow.com/a/37790196
 	rake unit "DEFINES=$(CFLAGS) -DUNITY_INCLUDE_DOUBLE" "FILES=$(FILES)" "UNIT_TEST_STYLE=$(UNIT_TEST_STYLE)"
+
+.PHONY: all clean build compile unit prep erase flash check_submodules trace openocd gdb halt reset flash_dfu flash_verify cload size print_version clean_version

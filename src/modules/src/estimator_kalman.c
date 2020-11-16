@@ -179,10 +179,8 @@ static StaticSemaphore_t dataMutexBuffer;
  * Constants used in the estimator
  */
 
-#define CRAZYFLIE_WEIGHT_grams (27.0f)
-
 //thrust is thrust mapped for 65536 <==> 60 GRAMS!
-#define CONTROL_TO_ACC (GRAVITY_MAGNITUDE*60.0f/CRAZYFLIE_WEIGHT_grams/65536.0f)
+#define CONTROL_TO_ACC (GRAVITY_MAGNITUDE*60.0f/(CF_MASS*1000.0f)/65536.0f)
 
 
 /**
@@ -257,19 +255,6 @@ static const bool useBaroUpdate = true;
 static const bool useBaroUpdate = false;
 #endif
 
-/**
- * Supporting and utility functions
- */
-
-static inline void mat_trans(const arm_matrix_instance_f32 * pSrc, arm_matrix_instance_f32 * pDst)
-  { configASSERT(ARM_MATH_SUCCESS == arm_mat_trans_f32(pSrc, pDst)); }
-static inline void mat_inv(const arm_matrix_instance_f32 * pSrc, arm_matrix_instance_f32 * pDst)
-  { configASSERT(ARM_MATH_SUCCESS == arm_mat_inverse_f32(pSrc, pDst)); }
-static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA, const arm_matrix_instance_f32 * pSrcB, arm_matrix_instance_f32 * pDst)
-  { configASSERT(ARM_MATH_SUCCESS == arm_mat_mult_f32(pSrcA, pSrcB, pDst)); }
-static inline float arm_sqrt(float32_t in)
-  { float pOut = 0; arm_status result = arm_sqrt_f32(in, &pOut); configASSERT(ARM_MATH_SUCCESS == result); return pOut; }
-
 static void kalmanTask(void* parameters);
 static bool predictStateForward(uint32_t osTick, float dt);
 static bool updateQueuedMeasurments(const Axis3f *gyro, const uint32_t tick);
@@ -319,7 +304,7 @@ static void kalmanTask(void* parameters) {
     // If the client triggers an estimator reset via parameter update
     if (coreData.resetEstimation) {
       estimatorKalmanInit();
-      coreData.resetEstimation = false;
+      paramSetInt(paramGetVarId("kalman", "resetEstimation"), 0);
     }
 
     // Tracks whether an update to the state has been made, and the state therefore requires finalization

@@ -42,11 +42,15 @@
 
 static bool isInit = false;
 
-// lighthouseBaseStationsGeometry has been moved to lighthouse_position_est.c
+// lighthouseBaseStationsGeometry has been moved to lighthouse_core.c
 
 static void lighthouseInit(DeckInfo *info)
 {
-  if (isInit) return;
+  if (isInit) {
+    return;
+  }
+
+  lighthouseCoreInit();
 
   xTaskCreate(lighthouseCoreTask, LIGHTHOUSE_TASK_NAME,
               2*configMINIMAL_STACK_SIZE, NULL, LIGHTHOUSE_TASK_PRI, NULL);

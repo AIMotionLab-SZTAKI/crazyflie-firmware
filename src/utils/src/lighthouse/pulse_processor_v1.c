@@ -31,10 +31,7 @@
 #include <string.h>
 #include <math.h>
 #include "test_support.h"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include "physicalConstants.h"
 
 // Decoding contants
 // Times are expressed in a 24MHz clock
@@ -148,11 +145,11 @@ TESTABLE_STATIC int getBaseStationId(pulseProcessorV1_t *stateV1, unsigned int t
   return baseStation;
 }
 
-static SweepDirection getAxis(int width) {
-  SweepDirection result = sweepDirection_x;
+static SweepId_t getAxis(int width) {
+  SweepId_t result = sweepIdFirst;
 
   if ((((width-SYNC_BASE_WIDTH)/SYNC_DIVIDER)&0x01) != 0) {
-    result = sweepDirection_y;
+    result = sweepIdSecond;
   }
 
   return result;
@@ -229,7 +226,7 @@ static void storeSyncData(pulseProcessorV1_t *stateV1, int baseStation, unsigned
   if (0 == baseStation) {
     stateV1->currentSync0 = timestamp;
     stateV1->currentSync0Width = width;
-    if (getAxis(width) == sweepDirection_x) {
+    if (getAxis(width) == sweepIdFirst) {
       uint32_t prevSync0X = stateV1->currentSync0X;
       stateV1->currentSync0X = timestamp;
       stateV1->frameWidth[0][0] = TS_DIFF(stateV1->currentSync0X, prevSync0X);
@@ -240,7 +237,7 @@ static void storeSyncData(pulseProcessorV1_t *stateV1, int baseStation, unsigned
     }
   } else {
     stateV1->currentSync1Width = width;
-    if (getAxis(width) == sweepDirection_x) {
+    if (getAxis(width) == sweepIdFirst) {
       uint32_t prevSync1X = stateV1->currentSync1X;
       stateV1->currentSync1X = timestamp;
       stateV1->frameWidth[1][0] = TS_DIFF(stateV1->currentSync1X, prevSync1X);

@@ -4,7 +4,6 @@
     - {page_id: build_instructions}
     - {page_id: build_config}
     - {page_id: flashing}
-    - {page_id: dfu}
 - title: Userguides
   subs:
     - {page_id: deck}
@@ -28,3 +27,4 @@
     - {page_id: unit_testing}
     - {page_id: systemtask}
     - {page_id: memory_management}
+    - {page_id: dfu}
