@@ -61,14 +61,18 @@ struct this_s {
 
   uint16_t thrustBase; // approximate throttle needed when in perfect hover. More weight/older battery can use a higher value
   uint16_t thrustMin;  // Minimum thrust value to output
+
+  float velFFGainX;
+  float velFFGainY;
+  float velFFGainZ;
 };
 
 // Maximum roll/pitch angle permited
 static float rpLimit  = 20;
 static float rpLimitOverhead = 1.10f;
 // Velocity maximums
-static float xyVelMax = 1.0f;
-static float zVelMax  = 1.0f;
+static float xyVelMax = 2.0f;
+static float zVelMax  = 0.8f;
 static float velMaxOverhead = 1.10f;
 static const float thrustScale = 1000.0f;
 
@@ -107,7 +111,7 @@ static struct this_s this = {
 
   .pidX = {
     .init = {
-      .kp = 2.0f,
+      .kp = 0.5f,
       .ki = 0,
       .kd = 0,
     },
@@ -116,7 +120,7 @@ static struct this_s this = {
 
   .pidY = {
     .init = {
-      .kp = 2.0f,
+      .kp = 0.5f,
       .ki = 0,
       .kd = 0,
     },
@@ -125,8 +129,8 @@ static struct this_s this = {
 
   .pidZ = {
     .init = {
-      .kp = 2.0f,
-      .ki = 0.5,
+      .kp = 0.5f,
+      .ki = 0.25f,
       .kd = 0,
     },
     .pid.dt = DT,
@@ -134,6 +138,10 @@ static struct this_s this = {
 
   .thrustBase = 36000,
   .thrustMin  = 20000,
+
+  .velFFGainX = 1,
+  .velFFGainY = 1,
+  .velFFGainZ = 1
 };
 #endif
 
@@ -177,17 +185,41 @@ void positionController(float* thrust, attitude_t *attitude, setpoint_t *setpoin
 
   // X, Y
   if (setpoint->mode.x == modeAbs) {
-    setpoint->velocity.x = runPid(state->position.x, &this.pidX, setpoint->position.x, DT);
+    setpoint->velocity.x = (
+      setpoint->velocity.x * this.velFFGainX +
+      runPid(state->position.x, &this.pidX, setpoint->position.x, DT)
+    );
+    setpoint->velocity.x = constrain(
+      setpoint->velocity.x,
+      -this.pidX.pid.outputLimit,
+      this.pidX.pid.outputLimit
+    );
   } else if (setpoint->velocity_body) {
     setpoint->velocity.x = bodyvx * cosyaw - bodyvy * sinyaw;
   }
   if (setpoint->mode.y == modeAbs) {
-    setpoint->velocity.y = runPid(state->position.y, &this.pidY, setpoint->position.y, DT);
+    setpoint->velocity.y = (
+      setpoint->velocity.y * this.velFFGainY +
+      runPid(state->position.y, &this.pidY, setpoint->position.y, DT)
+    );
+    setpoint->velocity.y = constrain(
+      setpoint->velocity.y,
+      -this.pidY.pid.outputLimit,
+      this.pidY.pid.outputLimit
+    );
   } else if (setpoint->velocity_body) {
     setpoint->velocity.y = bodyvy * cosyaw + bodyvx * sinyaw;
   }
   if (setpoint->mode.z == modeAbs) {
-    setpoint->velocity.z = runPid(state->position.z, &this.pidZ, setpoint->position.z, DT);
+    setpoint->velocity.z = (
+      setpoint->velocity.z * this.velFFGainZ +
+      runPid(state->position.z, &this.pidZ, setpoint->position.z, DT)
+    );
+    setpoint->velocity.z = constrain(
+      setpoint->velocity.z,
+      -this.pidZ.pid.outputLimit,
+      this.pidZ.pid.outputLimit
+    );
   }
 
   velocityController(thrust, attitude, setpoint, state);
@@ -297,6 +329,10 @@ PARAM_ADD(PARAM_FLOAT, zKd, &this.pidZ.pid.kd)
 
 PARAM_ADD(PARAM_UINT16, thrustBase, &this.thrustBase)
 PARAM_ADD(PARAM_UINT16, thrustMin, &this.thrustMin)
+
+PARAM_ADD(PARAM_FLOAT, velFFGainX, &this.velFFGainX)
+PARAM_ADD(PARAM_FLOAT, velFFGainY, &this.velFFGainY)
+PARAM_ADD(PARAM_FLOAT, velFFGainZ, &this.velFFGainZ)
 
 PARAM_ADD(PARAM_FLOAT, rpLimit,  &rpLimit)
 PARAM_ADD(PARAM_FLOAT, xyVelMax, &xyVelMax)
