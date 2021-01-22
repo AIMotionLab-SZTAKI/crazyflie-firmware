@@ -21,8 +21,16 @@ CFLAGS += -DSHOW_MODE_SILENT
 ## Set the positioning system in TDoA3 mode on startup
 LPS_TDOA3_ENABLE=1
 
-## Weight of the Crazyflie + UWB + LED deck
+## Weight of the Crazyflie + UWB + LED deck; set to 0.035f for the original
+## Crazyflie or 0.1f for the larger show drone prototype
 CFLAGS += -DCF_MASS=0.035f
+# CFLAGS += -DCF_MASS=0.1f
+
+## Additional flags for the larger show drone prototype; uncomment if needed.
+## The low voltage thresholds have to be tuned here, these are simply obtained
+## by multiplying whatever we've had with 2 since the new show drone prototype
+## used two cells.
+# CFLAGS += -DENABLE_ONESHOT125 -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000 -DLOW_VOLTAGE=6.4 -DCRITICAL_LOW_VOLTAGE=6.0
 
 ## Preflight test configuration ------------------------------------
 
