@@ -177,7 +177,6 @@ static int32_t pmBatteryChargeFromVoltage(float voltage)
   return charge;
 }
 
-
 float pmGetBatteryVoltage(void)
 {
   return batteryVoltage;

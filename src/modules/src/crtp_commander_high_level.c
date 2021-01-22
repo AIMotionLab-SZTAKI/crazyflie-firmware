@@ -238,7 +238,7 @@ static int takeoff_with_velocity(const struct data_takeoff_with_velocity* data);
 static int land_with_velocity(const struct data_land_with_velocity* data);
 static int stop(const struct data_stop* data);
 static int go_to(const struct data_go_to* data);
-static int start_trajectory(const struct data_start_trajectory* data);
+static int start_trajectory(const struct data_start_trajectory* data, float offset);
 static int define_trajectory(const struct data_define_trajectory* data);
 
 // Helper functions
@@ -367,7 +367,7 @@ static int handleCommand(const enum TrajectoryCommand_e command, const uint8_t* 
       ret = go_to((const struct data_go_to*)data);
       break;
     case COMMAND_START_TRAJECTORY:
-      ret = start_trajectory((const struct data_start_trajectory*)data);
+      ret = start_trajectory((const struct data_start_trajectory*)data, 0);
       break;
     case COMMAND_DEFINE_TRAJECTORY:
       ret = define_trajectory((const struct data_define_trajectory*)data);
@@ -552,16 +552,19 @@ int go_to(const struct data_go_to* data)
   return result;
 }
 
-int start_trajectory(const struct data_start_trajectory* data)
+int start_trajectory(const struct data_start_trajectory* data, float offset)
 {
   int result = 0;
+  if (offset < 0 || isnan(offset)) {
+    return ENOEXEC;
+  }
   if (isInGroup(data->groupMask)) {
     if (data->trajectoryId < NUM_TRAJECTORY_DEFINITIONS) {
       struct trajectoryDescription* trajDesc = &trajectory_descriptions[data->trajectoryId];
       if (   trajDesc->trajectoryLocation == TRAJECTORY_LOCATION_MEM
           && trajDesc->trajectoryType == CRTP_CHL_TRAJECTORY_TYPE_POLY4D) {
         xSemaphoreTake(lockTraj, portMAX_DELAY);
-        float t = usecTimestamp() / 1e6;
+        float t = usecTimestamp() / 1e6f - offset;
         trajectory.t_begin = t;
         trajectory.timescale = data->timescale;
         trajectory.n_pieces = trajDesc->trajectoryIdentifier.mem.n_pieces;
@@ -589,7 +592,7 @@ int start_trajectory(const struct data_start_trajectory* data)
           result = ENOEXEC;
         } else {
           xSemaphoreTake(lockTraj, portMAX_DELAY);
-          float t = usecTimestamp() / 1e6;
+          float t = usecTimestamp() / 1e6f - offset;
           piecewise_compressed_load(
             &compressed_trajectory,
             &trajectories_memory[trajDesc->trajectoryIdentifier.mem.offset]
@@ -766,6 +769,20 @@ int crtpCommanderHighLevelStartTrajectory(const uint8_t trajectoryId, const floa
   };
 
   return handleCommand(COMMAND_START_TRAJECTORY, (const uint8_t*)&data);
+}
+
+int crtpCommanderHighLevelStartTrajectoryWithOffset(const uint8_t trajectoryId, const float offset, const float timeScale, const bool relative, const bool reversed)
+{
+  struct data_start_trajectory data =
+  {
+    .trajectoryId = trajectoryId,
+    .timescale = timeScale,
+    .relative = relative,
+    .reversed = reversed,
+    .groupMask = ALL_GROUPS,
+  };
+
+  return start_trajectory(&data, offset);
 }
 
 int crtpCommanderHighLevelDefineTrajectory(const uint8_t trajectoryId, const crtpCommanderTrajectoryType_t type, const uint32_t offset, const uint8_t nPieces)

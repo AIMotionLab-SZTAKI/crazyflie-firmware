@@ -180,6 +180,22 @@ bool crtpCommanderHighLevelIsTrajectoryDefined(uint8_t trajectoryId);
 int crtpCommanderHighLevelStartTrajectory(const uint8_t trajectoryId, const float timeScale, const bool relative, const bool reversed);
 
 /**
+ * @brief starts executing a specified trajectory with a time offset _into_ the
+ * trajectory
+ *
+ * @param trajectoryId id of the trajectory (previously defined by define_trajectory)
+ * @param offset       time offset, in seconds, relative to the start of the
+ *                     trajectory, _without_ taking into account the time scale
+ * @param timeScale    time factor; 1.0 = original speed;
+ *                                  >1.0: slower;
+ *                                  <1.0: faster
+ * @param relative     set to True, if trajectory should be shifted to current setpoint
+ * @param reversed     set to True, if trajectory should be executed in reverse
+ * @return zero if the command succeeded, an error code otherwise
+ */
+int crtpCommanderHighLevelStartTrajectoryWithOffset(const uint8_t trajectoryId, const float offset, const float timeScale, const bool relative, const bool reversed);
+
+/**
  * @brief Define a trajectory that has previously been uploaded to memory.
  *
  * @param trajectoryId The id of the trajectory
