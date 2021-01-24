@@ -7,6 +7,7 @@
 #include "commander.h"
 #include "crtp_commander_high_level.h"
 #include "drone_show.h"
+#include "gcs_light_effects.h"
 #include "light_program.h"
 #include "log.h"
 #include "param.h"
@@ -123,6 +124,7 @@ static bool shouldRunPreflightChecksInState(show_state_t state);
 static bool shouldRunLightProgramInState(show_state_t state);
 static bool shouldStartWithFailingPreflightChecks();
 static void updateLEDRing();
+static void updateTestingMode();
 
 static void processPendingCommands();
 static void processPauseCommand();
@@ -139,11 +141,6 @@ void droneShowInit() {
   timer = xTimerCreate("ShowTimer", M2T(LOOP_INTERVAL_MSEC), pdTRUE, NULL, droneShowTimer);
   xTimerStart(timer, LOOP_INTERVAL_MSEC);
 
-  /* This triggers all the stuff that has to happen when entering the idle
-   * state; this is the only reason why we also needed an "initializing"
-   * state */
-  setState(STATE_IDLE);
-
   /* Retrieve the IDs of the log variables and parameters that we will need */
   logIds.canFly = logGetVarId("sys", "canfly");
   paramIds.highLevelCommanderEnabled = paramGetVarId("commander", "enHighLevel");
@@ -158,6 +155,12 @@ void droneShowInit() {
   ) {
     return;
   }
+
+  /* This triggers all the stuff that has to happen when entering the idle
+   * state; this is the only reason why we also needed an "initializing"
+   * state. We can call this only here because the state change handlers might
+   * need the log/param IDs that we only set up above */
+  setState(STATE_IDLE);
 
   isInit = true;
 
@@ -191,7 +194,13 @@ bool droneShowIsInTestingMode(void) {
   return isTesting || !logGetInt(logIds.canFly);
 }
 
-void droneShowStart() {
+void droneShowRequestLEDRingControlModeEvaluation(void) {
+  if (PARAM_VARID_IS_VALID(paramIds.ledRingEffect)) {
+    paramSetInt(paramIds.ledRingEffect, desiredLEDEffectForState(state));
+  }
+}
+
+void droneShowStart(void) {
   return droneShowDelayedStart(0);
 }
 
@@ -233,7 +242,7 @@ void droneShowDelayedStart(int16_t delayMsec) {
   }
 }
 
-void droneShowPause() {
+void droneShowPause(void) {
   /*
   xSemaphoreTake(pendingCommandsSemaphore, portMAX_DELAY);
   pendingCommands |= CMD_PAUSE;
@@ -249,7 +258,7 @@ void droneShowRestart(void) {
   xSemaphoreGive(pendingCommandsSemaphore);
 }
 
-void droneShowStop() {
+void droneShowStop(void) {
   xSemaphoreTake(pendingCommandsSemaphore, portMAX_DELAY);
   pendingCommands |= CMD_STOP;
   xSemaphoreGive(pendingCommandsSemaphore);
@@ -257,7 +266,7 @@ void droneShowStop() {
   startTime = 0;
 }
 
-bool droneShowTest() {
+bool droneShowTest(void) {
   return isInit;
 }
 
@@ -375,7 +384,7 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_LANDED:
       /* This is a sink state; we can go back to the idle state if we receive
        * a STOP or RESTART command, or we also go back automatically after
-	   * 30 seconds */
+	     * 30 seconds */
       if (getSecondsSinceLastStateSwitch() > 30) {
         setState(STATE_IDLE);
       }
@@ -388,21 +397,8 @@ static void droneShowTimer(xTimerHandle timer) {
   /* Update the LED ring on the drone */
   updateLEDRing();
 
-  /* Prevent the motors from spinning if we are in testing mode. Note that we
-   * act only if the value of droneShowIsInTestingMode() changes -- this is to
-   * ensure that we do not start fighting with the tumble detector if the drone
-   * tumbles during a show */
-  if (droneShowIsInTestingMode()) {
-    if (!wasInTestingMode) {
-      stabilizerSetEmergencyStop();
-      wasInTestingMode = true;
-    }
-  } else {
-    if (wasInTestingMode) {
-      stabilizerResetEmergencyStop();
-      wasInTestingMode = false;
-    }
-  }
+  /* Update whether the drone is in testing mode */
+  updateTestingMode();
 }
 
 /**
@@ -490,7 +486,9 @@ static bool hasTakeoffTimePassed() {
  * given show state.
  */
 static uint8_t desiredLEDEffectForState(show_state_t state) {
-  if (shouldRunPreflightChecksInState(state)) {
+  if (areGcsLightEffectsActive()) {
+    return 7;     /* solid color */
+  } else if (shouldRunPreflightChecksInState(state)) {
     return 7;     /* solid color */
   } else if (shouldRunLightProgramInState(state)) {
     return 7;     /* solid color */
@@ -564,9 +562,7 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   preflightSetEnabled(shouldRunPreflightChecksInState(state));
 
   /* Update the effect of the LED ring if we have an LED ring */
-  if (PARAM_VARID_IS_VALID(paramIds.ledRingEffect)) {
-    paramSetInt(paramIds.ledRingEffect, desiredLEDEffectForState(state));
-  }
+  droneShowRequestLEDRingControlModeEvaluation();
 
   /* Clear the "startTime" variable if we are on the ground and we are not
    * waiting for the takeoff time */
@@ -579,8 +575,7 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   /* If we have entered the preflight checks from the idle stage, start by
    * resetting the Kalman filter if it is not passing yet */
   if (state == STATE_WAIT_FOR_PREFLIGHT_CHECK && oldState == STATE_IDLE) {
-    /* TODO(ntamas): hardcoded preflight check name is not nice here */
-    if (!isPreflightCheckPassing(2)) {
+    if (!isPreflightCheckPassing(PREFLIGHT_CHECK_KALMAN_FILTER)) {
       preflightResetKalmanFilterToHome();
     }
   }
@@ -764,8 +759,10 @@ static bool shouldRunLightProgramInState(show_state_t state) {
  * preflight checks are failing.
  */
 static bool shouldStartWithFailingPreflightChecks() {
-  /* TODO(ntamas): make this more sophisticated! */
-  return true;
+  /* It makes absolutely no sense to start if there is no trajectory uploaded
+   * to the drone. In all other cases, it _might_ make sense to start (although
+   * it is somewhat unsafe */
+  return isPreflightCheckPassing(PREFLIGHT_CHECK_TRAJECTORY_AND_LIGHTS);
 }
 
 /**
@@ -799,9 +796,16 @@ static void modulateColorWithBreathingPattern(uint8_t* color, uint64_t timestamp
 static void updateLEDRing() {
   uint64_t now;
   bool canStart;
+  bool updateLights = true;
   preflight_check_result_t preflightCheckSummary;
 
-  if (shouldRunPreflightChecksInState(state)) {
+  if (areGcsLightEffectsActive()) {
+    /* The user has explicitly overridden the color of the LED ring from the
+     * GCS so we use that color */
+    gcsLightEffectEvaluate(lastColor);
+  } else if (shouldRunPreflightChecksInState(state)) {
+    /* Preflight checks are running in the current state so set the color of the
+     * LED ring based on the preflight checks */
     preflightCheckSummary = getPreflightCheckSummary();
     canStart = (preflightCheckSummary == preflightResultPass) || shouldStartWithFailingPreflightChecks();
 
@@ -838,21 +842,44 @@ static void updateLEDRing() {
         default:
           lastColor[0] = lastColor[1] = lastColor[2] = 0;
           break;
-	  }
+      }
     }
   } else if (shouldRunLightProgramInState(state)) {
+    /* Light program is running in this state so evaluate the light program */
     lightProgramPlayerEvaluate(lastColor);
   } else {
-    lastColor[0] = lastColor[1] = lastColor[2] = 0;
-
     /* we are not controlling the LED ring in this state. Errors are handled by
      * the "siren" pattern */
-    return;
+    lastColor[0] = lastColor[1] = lastColor[2] = 0;
+    updateLights = false;
   }
 
-  paramSetInt(paramIds.ledColorRed, lastColor[0]);
-  paramSetInt(paramIds.ledColorGreen, lastColor[1]);
-  paramSetInt(paramIds.ledColorBlue, lastColor[2]);
+  if (updateLights) {
+    paramSetInt(paramIds.ledColorRed, lastColor[0]);
+    paramSetInt(paramIds.ledColorGreen, lastColor[1]);
+    paramSetInt(paramIds.ledColorBlue, lastColor[2]);
+  }
+}
+
+/**
+ * Updates whether the drone is currently in testing mode.
+ */
+static void updateTestingMode() {
+  /* Prevent the motors from spinning if we are in testing mode. Note that we
+   * act only if the value of droneShowIsInTestingMode() changes -- this is to
+   * ensure that we do not start fighting with the tumble detector if the drone
+   * tumbles during a show */
+  if (droneShowIsInTestingMode()) {
+    if (!wasInTestingMode) {
+      stabilizerSetEmergencyStop();
+      wasInTestingMode = true;
+    }
+  } else {
+    if (wasInTestingMode) {
+      stabilizerResetEmergencyStop();
+      wasInTestingMode = false;
+    }
+  }
 }
 
 PARAM_GROUP_START(show)

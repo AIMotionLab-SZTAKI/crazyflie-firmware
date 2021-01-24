@@ -7,6 +7,7 @@
 #ifndef __LIGHT_PROGRAM_H__
 #define __LIGHT_PROGRAM_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 
 enum LightProgramLocation_e {
@@ -43,7 +44,7 @@ struct lightProgramDescription
 void lightProgramPlayerInit(void);
 
 /**
- * Tests whether the light program playermodule is ready to be used.
+ * Tests whether the light program player module is ready to be used.
  */
 bool lightProgramPlayerTest(void);
 

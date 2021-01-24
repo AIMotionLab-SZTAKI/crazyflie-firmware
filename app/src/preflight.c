@@ -452,7 +452,11 @@ static void preflightWorker(void* data) {
    * want to put them in the result variable, from right (LSB) to left (MSB).
    * Conceptually, we go from simpler, low-level tests (such as battery
    * voltage or the state of the stabilizer) to high-level tests (such as
-   * the positioning system or the uploaded trajectory) */
+   * the positioning system or the uploaded trajectory).
+   * 
+   * The order of the tests must also pass the order in the preflight_check_t
+   * enum.
+   */
 
   if (isEnabled) {
     RUN_CHECK(battery, testBattery());

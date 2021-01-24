@@ -12,6 +12,7 @@
 
 #include "crtp_drone_show_service.h"
 #include "drone_show.h"
+#include "gcs_light_effects.h"
 #include "light_program.h"
 #include "preflight.h"
 
@@ -50,6 +51,7 @@ static bool appTest()
   bool pass = isInit;
 
   pass &= preflightTest();
+  pass &= gcsLightEffectsTest();
   pass &= lightProgramPlayerTest();
   pass &= droneShowSrvTest();
   pass &= droneShowTest();
@@ -62,6 +64,7 @@ static void appTask(void *param)
   systemWaitStart();
 
   preflightInit();
+  gcsLightEffectsInit();
   droneShowSrvInit();
   droneShowInit();
 

@@ -8,6 +8,18 @@
 #define __PREFLIGHT_H__
 
 /**
+ * Enum describing the various preflight tests.
+ */
+typedef enum {
+  PREFLIGHT_CHECK_BATTERY = 0,
+  PREFLIGHT_CHECK_SENSORS = 1,
+  PREFLIGHT_CHECK_KALMAN_FILTER = 2,
+  PREFLIGHT_CHECK_POSITIONING = 3,
+  PREFLIGHT_CHECK_HOME = 4,
+  PREFLIGHT_CHECK_TRAJECTORY_AND_LIGHTS = 5
+} preflight_check_t;
+
+/**
  * Enum describing the different results that a preflight check may return.
  * "Off" should be used for tests that are not relevant, "Fail" should be
  * returned for test failures and "Pass" should be returned for successful
@@ -51,6 +63,9 @@ preflight_check_status_t getPreflightCheckStatus();
 
 /**
  * Returns the detailed result of a single preflight tests.
+ * 
+ * Use the symbolic constants from the preflight_check_t enum when calling this
+ * function.
  */
 preflight_check_result_t getSinglePreflightCheckStatus(uint8_t index);
 
@@ -66,11 +81,17 @@ preflight_check_result_t getPreflightCheckSummary();
 
 /**
  * Returns whether a single preflight check is failing.
+ * 
+ * Use the symbolic constants from the preflight_check_t enum when calling this
+ * function.
  */
 bool isPreflightCheckFailing(uint8_t index);
 
 /**
  * Returns whether a single preflight check is passing.
+ * 
+ * Use the symbolic constants from the preflight_check_t enum when calling this
+ * function.
  */
 bool isPreflightCheckPassing(uint8_t index);
 

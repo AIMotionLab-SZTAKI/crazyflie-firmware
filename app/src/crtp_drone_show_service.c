@@ -10,6 +10,7 @@
 #include "crtp_drone_show_service.h"
 #include "drone_show.h"
 #include "estimator_kalman.h"
+#include "gcs_light_effects.h"
 #include "light_program.h"
 #include "log.h"
 #include "param.h"
@@ -27,10 +28,16 @@
 #define CMD_STATUS 3
 #define CMD_DEFINE_LIGHT_PROGRAM 4
 #define CMD_RESTART 5
+#define CMD_TRIGGER_GCS_LIGHT_EFFECT 6
 
 struct data_define_program {
   uint8_t programId;
   struct lightProgramDescription description;
+} __attribute__((packed));
+
+struct data_trigger_light_effect {
+  uint8_t effect;
+  uint8_t color[3];
 } __attribute__((packed));
 
 static bool isInit = false;
@@ -49,6 +56,7 @@ static struct {
 
 static void droneShowSrvCrtpCB(CRTPPacket* pk);
 static void handleDefineLightProgramPacket(CRTPPacket* pk);
+static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk);
 static void updatePacketWithStatusInformation(CRTPPacket* pk);
 
 void droneShowSrvInit() {
@@ -121,6 +129,10 @@ static void droneShowSrvProcessControlPacket(CRTPPacket* pk) {
       handleDefineLightProgramPacket(pk);
       break;
 
+    case CMD_TRIGGER_GCS_LIGHT_EFFECT:
+      handleTriggerGcsLightEffectPacket(pk);
+      break;
+
     default:
       return;
   }
@@ -138,8 +150,31 @@ static void handleDefineLightProgramPacket(CRTPPacket* pk) {
   struct data_define_program data = *((struct data_define_program*)(pk->data + 1));
 
   /* put the response in the reply and trim the packet */
-  pk->size = 3;
-  pk->data[2] = lightProgramPlayerDefineProgram(data.programId, data.description);
+  if (pk->size >= sizeof(struct data_define_program) + 1) {
+    pk->size = 3;
+    pk->data[2] = lightProgramPlayerDefineProgram(data.programId, data.description);
+  } else {
+    pk->size = 3;
+    pk->data[2] = EINVAL;
+  }
+}
+
+static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk) {
+  struct data_trigger_light_effect data = *((struct data_trigger_light_effect*)(pk->data + 1));
+  uint8_t color[3];
+
+  /* put the response in the reply and trim the packet */
+  if (pk->size >= sizeof(struct data_trigger_light_effect) + 1) {
+    color[0] = data.color[0];
+    color[1] = data.color[1];
+    color[2] = data.color[2];
+
+    pk->size = 3;
+    pk->data[2] = gcsLightEffectTrigger(data.effect, color);
+  } else {
+    pk->size = 3;
+    pk->data[2] = EINVAL;
+  }
 }
 
 static void updatePacketWithStatusInformation(CRTPPacket* pk) {

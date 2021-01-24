@@ -64,6 +64,12 @@ bool droneShowIsProbablyAirborne(void);
 bool droneShowIsInTestingMode(void);
 
 /**
+ * Requests the drone show module to re-evaluate whether the LED ring should be
+ * controlled or not.
+ */
+void droneShowRequestLEDRingControlModeEvaluation(void);
+
+/**
  * Sends a start signal that will trigger the execution of the configured
  * drone show, if the drone show execution module is currently waiting for the
  * start signal or is in the prearm checking phase. Ignored in all other states.

@@ -6,7 +6,6 @@
 
 #include <errno.h>
 #include <memory.h>
-#include <stdbool.h>
 
 /* FreeRtos includes */
 #include "FreeRTOS.h"
