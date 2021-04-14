@@ -278,14 +278,14 @@ static preflight_check_result_t testKalmanFilter() {
 
   /* Perform initializations if needed (at first invocation and after every
    * reset of the Kalman filter) */
-  if (!LOG_VARID_IS_VALID(kalmanVarIds[0])) {
+  if (!logVarIdIsValid(kalmanVarIds[0])) {
     /* Initialization: get log variable IDs and clear variance log */
     kalmanVarIds[0] = logGetVarId("kalman", "varPX");
     kalmanVarIds[1] = logGetVarId("kalman", "varPY");
     kalmanVarIds[2] = logGetVarId("kalman", "varPZ");
 
     for (dim = 0; dim < 3; dim++) {
-      if (!LOG_VARID_IS_VALID(kalmanVarIds[dim]) || logGetType(kalmanVarIds[dim]) != LOG_FLOAT) {
+      if (!logVarIdIsValid(kalmanVarIds[dim]) || logGetType(kalmanVarIds[dim]) != LOG_FLOAT) {
         kalmanVarIds[0] = 0xffffu;
         FAIL;
       }

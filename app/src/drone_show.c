@@ -13,8 +13,8 @@
 #include "param.h"
 #include "pm.h"
 #include "preflight.h"
-#include "sitaw.h"
 #include "stabilizer.h"
+#include "supervisor.h"
 
 #ifdef SHOW_MODE_SILENT
 #  define DEBUG_PRINT(fmt, ...) /* nothing */
@@ -95,10 +95,6 @@ static uint8_t waitCounter;
 static uint8_t lowBatteryCounter;
 
 static struct {
-  logVarId_t canFly;
-} logIds;
-
-static struct {
   paramVarId_t ledColorRed;
   paramVarId_t ledColorGreen;
   paramVarId_t ledColorBlue;
@@ -142,17 +138,13 @@ void droneShowInit() {
   xTimerStart(timer, LOOP_INTERVAL_MSEC);
 
   /* Retrieve the IDs of the log variables and parameters that we will need */
-  logIds.canFly = logGetVarId("sys", "canfly");
   paramIds.highLevelCommanderEnabled = paramGetVarId("commander", "enHighLevel");
   paramIds.ledColorRed = paramGetVarId("ring", "solidRed");
   paramIds.ledColorGreen = paramGetVarId("ring", "solidGreen");
   paramIds.ledColorBlue = paramGetVarId("ring", "solidBlue");
   paramIds.ledRingEffect = paramGetVarId("ring", "effect");
 
-  if (
-    !LOG_VARID_IS_VALID(logIds.canFly) ||
-    !PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled)
-  ) {
+  if (!PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled)) {
     return;
   }
 
@@ -191,7 +183,7 @@ bool droneShowIsProbablyAirborne(void) {
 bool droneShowIsInTestingMode(void) {
   /* we are in testing mode if we were explicitly set to be in testing mode or
    * if a USB cable is plugged in and the drone couldn't fly anyway */
-  return isTesting || !logGetInt(logIds.canFly);
+  return isTesting || !supervisorCanFly();
 }
 
 void droneShowRequestLEDRingControlModeEvaluation(void) {
@@ -303,7 +295,7 @@ static void droneShowTimer(xTimerHandle timer) {
   /* Also, if we are airborne and the tumble detector kicks in, move to the
    * error state immediately */
   if (isEnabled) {
-    if (droneShowIsProbablyAirborne() && sitAwTuDetected()) {
+    if (droneShowIsProbablyAirborne() && supervisorIsTumbled()) {
       setState(STATE_ERROR);
     }
   }

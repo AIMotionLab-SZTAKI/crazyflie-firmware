@@ -16,6 +16,7 @@
 #include "param.h"
 #include "pm.h"
 #include "preflight.h"
+#include "supervisor.h"
 
 #define DEBUG_MODULE "SHOW"
 #include "debug.h"
@@ -43,7 +44,6 @@ struct data_trigger_light_effect {
 static bool isInit = false;
 
 static struct {
-  logVarId_t inFlight;
   logVarId_t isArmed;
   logVarId_t stateEstimateYaw;
   logVarId_t ledColorRed;
@@ -68,15 +68,13 @@ void droneShowSrvInit() {
   logIds.ledColorRed = logGetVarId("show", "ledColorRed");
   logIds.ledColorGreen = logGetVarId("show", "ledColorGreen");
   logIds.ledColorBlue = logGetVarId("show", "ledColorBlue");
-  logIds.inFlight = logGetVarId("kalman", "inFlight");
   logIds.isArmed = logGetVarId("health", "checkStops");
   logIds.stateEstimateYaw = logGetVarId("stateEstimate", "yaw");
   paramIds.highLevelCommanderEnabled = paramGetVarId("commander", "enHighLevel");
 
   if (
-    !LOG_VARID_IS_VALID(logIds.inFlight) ||
-    !LOG_VARID_IS_VALID(logIds.stateEstimateYaw) ||
-    !LOG_VARID_IS_VALID(logIds.isArmed) ||
+    !logVarIdIsValid(logIds.stateEstimateYaw) ||
+    !logVarIdIsValid(logIds.isArmed) ||
     !PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled)
   ) {
     return;
@@ -206,7 +204,7 @@ static void updatePacketWithStatusInformation(CRTPPacket* pk) {
     /* is the drone show mode turned on? */
     (droneShowIsEnabled() ? (1 << 2) : 0) |
     /* is the drone flying? */
-    (logGetUint(logIds.inFlight) ? (1 << 3) : 0) |
+    (supervisorIsFlying() ? (1 << 3) : 0) |
     /* is the drone show in testing mode? */
     (droneShowIsInTestingMode() ? (1 << 4) : 0) |
     /* is the drone _disarmed_? (backwards compatibility) */
