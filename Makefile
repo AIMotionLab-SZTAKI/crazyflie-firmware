@@ -1,5 +1,5 @@
 # CrazyFlie's Makefile
-# Copyright (c) 2011,2012 Bitcraze AB
+# Copyright (c) 2011-2021 Bitcraze AB
 # This Makefile compiles all the object file to ./bin/ and the resulting firmware
 # image in ./cfX.elf and ./cfX.bin
 
@@ -110,7 +110,7 @@ FREERTOS_OBJ = list.o tasks.o queue.o timers.o $(MEMMANG_OBJ)
 
 #FatFS
 VPATH += $(LIB)/FatFS
-PROJ_OBJ += diskio.o ff.o syscall.o ffunicode.o fatfs_sd.o
+PROJ_OBJ += ff.o ffunicode.o fatfs_sd.o
 ifeq ($(FATFS_DISKIO_TESTS), 1)
 PROJ_OBJ += diskio_function_tests.o
 CFLAGS += -DUSD_RUN_DISKIO_FUNCTION_TESTS
@@ -138,7 +138,7 @@ PROJ_OBJ += platform.o platform_utils.o platform_$(PLATFORM).o platform_$(CPU).o
 
 # Drivers
 PROJ_OBJ += exti.o nvic.o motors.o
-PROJ_OBJ += led_f405.o mpu6500.o i2cdev_f405.o ws2812_cf2.o lps25h.o i2c_drv.o
+PROJ_OBJ += led.o mpu6500.o i2cdev.o ws2812_cf2.o lps25h.o i2c_drv.o
 PROJ_OBJ += ak8963.o eeprom.o maxsonar.o piezo.o
 PROJ_OBJ += uart_syslink.o swd.o uart1.o uart2.o watchdog.o
 PROJ_OBJ += cppm.o
@@ -166,9 +166,10 @@ PROJ_OBJ += vl53l1_register_funcs.o vl53l1_wait.o vl53l1_core_support.o
 
 # Modules
 PROJ_OBJ += system.o comm.o console.o pid.o crtpservice.o param.o
-PROJ_OBJ += log.o worker.o trigger.o sitaw.o queuemonitor.o msp.o
+PROJ_OBJ += log.o worker.o queuemonitor.o msp.o
 PROJ_OBJ += platformservice.o sound_cf2.o extrx.o sysload.o mem.o
 PROJ_OBJ += range.o app_handler.o static_mem.o app_channel.o
+PROJ_OBJ += eventtrigger.o supervisor.o
 
 # Stabilizer modules
 PROJ_OBJ += commander.o crtp_commander.o crtp_commander_rpyt.o
@@ -183,12 +184,13 @@ PROJ_OBJ += collision_avoidance.o health.o
 # Kalman estimator
 PROJ_OBJ += estimator_kalman.o kalman_core.o kalman_supervisor.o
 PROJ_OBJ += mm_distance.o mm_absolute_height.o mm_position.o mm_pose.o mm_tdoa.o mm_flow.o mm_tof.o mm_yaw_error.o mm_sweep_angles.o
+PROJ_OBJ += mm_tdoa_robust.o mm_distance_robust.o
 
 # High-Level Commander
 PROJ_OBJ += crtp_commander_high_level.o planner.o pptraj.o pptraj_compressed.o
 
 # Deck Core
-PROJ_OBJ += deck.o deck_info.o deck_drivers.o deck_test.o
+PROJ_OBJ += deck.o deck_info.o deck_drivers.o deck_test.o deck_memory.o
 
 # Deck API
 PROJ_OBJ += deck_constants.o
@@ -274,7 +276,7 @@ endif
 # Libs
 PROJ_OBJ += libarm_math.a
 
-OBJ = $(FREERTOS_OBJ) $(PORT_OBJ) $(ST_OBJ) $(PROJ_OBJ) $(CRT0)
+OBJ = $(FREERTOS_OBJ) $(PORT_OBJ) $(ST_OBJ) $(PROJ_OBJ) $(APP_OBJ) $(CRT0)
 
 ############### Compilation configuration ################
 AS = $(CROSS_COMPILE)as
@@ -339,7 +341,7 @@ CFLAGS += -Wdouble-promotion
 
 
 ASFLAGS = $(PROCESSOR) $(INCLUDES)
-LDFLAGS = --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
+LDFLAGS += --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
 LDFLAGS += -L$(CRAZYFLIE_BASE)/tools/make/F405/linker
 
 #Flags required by the ST library
