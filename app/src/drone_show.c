@@ -155,8 +155,6 @@ void droneShowInit() {
   setState(STATE_IDLE);
 
   isInit = true;
-
-  DEBUG_PRINT("Initialized.\n");
 }
 
 const uint8_t* droneShowGetLastColor() {
