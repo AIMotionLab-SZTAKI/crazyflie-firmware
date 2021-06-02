@@ -70,6 +70,8 @@ static void appTask(void *param)
 
   if (appTest()) {
     appMain();
+  } else {
+    DEBUG_PRINT("Failure during drone show app startup.\n");
   }
 
   while(1) {

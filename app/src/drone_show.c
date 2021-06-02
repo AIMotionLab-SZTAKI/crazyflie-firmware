@@ -374,7 +374,7 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_LANDED:
       /* This is a sink state; we can go back to the idle state if we receive
        * a STOP or RESTART command, or we also go back automatically after
-	     * 30 seconds */
+       * 30 seconds */
       if (getSecondsSinceLastStateSwitch() > 30) {
         setState(STATE_IDLE);
       }
