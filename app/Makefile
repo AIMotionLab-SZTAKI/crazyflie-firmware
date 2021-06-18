@@ -30,7 +30,7 @@ CFLAGS += -DCF_MASS=0.035f
 ## The low voltage thresholds have to be tuned here, these are simply obtained
 ## by multiplying whatever we've had with 2 since the new show drone prototype
 ## used two cells.
-# CFLAGS += -DENABLE_ONESHOT125 -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000 -DLOW_VOLTAGE=6.4 -DCRITICAL_LOW_VOLTAGE=6.0
+# CFLAGS += -DENABLE_ONESHOT125 -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000 -DLOW_VOLTAGE=6.4f -DCRITICAL_LOW_VOLTAGE=6.0f
 
 ## Preflight test configuration ------------------------------------
 

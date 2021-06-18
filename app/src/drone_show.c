@@ -280,7 +280,7 @@ static void droneShowTimer(xTimerHandle timer) {
   /* Next, if we are airborne and the battery voltage goes below the threshold
    * for an extended period of time, start landing */
   if (!isStateOnGround(state) && !isLandingState(state)) {
-    if (pmGetBatteryVoltage() < PM_BAT_CRITICAL_LOW_VOLTAGE + 0.1f) {
+    if (pmGetBatteryVoltage() < ((float) PM_BAT_CRITICAL_LOW_VOLTAGE) + 0.1f) {
       lowBatteryCounter++;
       if (lowBatteryCounter >= LOW_BATTERY_DURATION_MSEC / LOOP_INTERVAL_MSEC) {
         setState(STATE_LANDING_LOW_BATTERY);
