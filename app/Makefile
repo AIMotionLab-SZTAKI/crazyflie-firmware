@@ -1,3 +1,19 @@
+## General app configuration ---------------------------------------
+
+# The Crazyflie model that we are building the firmware for. Possible values:
+#
+# stock: basic Crazyflie 2.1 with LED ring and UWB module
+# show-proto-v1: show drone prototype sent to us by Bitcraze in Dec 2020
+# show-proto-v2: Nina's show drone prototype with Lighthouse instead of UWB
+#
+# When adding a new model, do not forget to create the appropriate file in conf/
+
+CF_MODEL=stock
+
+## Variables derived from the general app configuration ------------
+
+include conf/$(CF_MODEL).mk
+
 # Enable app support
 APP=1
 
@@ -18,27 +34,22 @@ CFLAGS += -DSILENT_PARAM_UPDATES
 ## Do not print debug messages from show mode
 CFLAGS += -DSHOW_MODE_SILENT
 
-## Set the positioning system in TDoA3 mode on startup
-LPS_TDOA3_ENABLE=1
+## Set the positioning system in TDoA3 mode on startup. This gives a minimal
+# performance gain at startup and also makes it somewhat easier to detect when
+# nodes are misconfigured (mixed TDoA3 and TDoA2 mode), but its effect is
+# negligible so we keep it off.
+# LPS_TDOA3_ENABLE=1
 
-## Weight of the Crazyflie + UWB + LED deck; set to 0.035f for the original
-## Crazyflie or 0.1f for the larger show drone prototype
-CFLAGS += -DCF_MASS=0.035f
-# CFLAGS += -DCF_MASS=0.1f
-
-## Additional flags for the larger show drone prototype; uncomment if needed.
-## The low voltage thresholds have to be tuned here, these are simply obtained
-## by multiplying whatever we've had with 2 since the new show drone prototype
-## used two cells.
-# CFLAGS += -DENABLE_ONESHOT125 -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000 -DLOW_VOLTAGE=6.4f -DCRITICAL_LOW_VOLTAGE=6.0f
+## Weight of the Crazyflie + UWB + LED deck
+CFLAGS += -DCF_MASS=$(CF_MODEL_MASS)
 
 ## Preflight test configuration ------------------------------------
 
-# Specify minimum number of UWB anchors that have to be configured
-CFLAGS += -DPREFLIGHT_MIN_LOCO_ANCHOR_COUNT=6
-
-# Specify minimum number of UWB anchors that have to be active
-CFLAGS += -DPREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT=6
+ifeq ($(CF_MODEL_POSITIONING),uwb)
+# Specify minimum number of UWB anchors that have to be configured and that have
+# to be active in order for the preflight checks to pass
+CFLAGS += -DPREFLIGHT_MIN_LOCO_ANCHOR_COUNT=6 -DPREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT=6
+endif
 
 # Specify minimum number of trajectories that have to be uploaded before flight
 CFLAGS += -DPREFLIGHT_MIN_TRAJECTORIES=1
@@ -61,6 +72,9 @@ PROJ_OBJ += app.o crtp_drone_show_service.o drone_show.o gcs_light_effects.o \
 # LED light control library
 INCLUDES += -Ivendor/ledctrl/include
 PROJ_OBJ += libledctrl.a
+
+# Make sure that the program name includes the Crazyflie model
+PROG=cf2-skybrush-$(CF_MODEL)
 
 # Inherit everything else from the base firmware makefile
 CRAZYFLIE_BASE=..
