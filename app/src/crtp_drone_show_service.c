@@ -5,6 +5,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "arming.h"
 #include "commander.h"
 #include "crtp.h"
 #include "crtp_drone_show_service.h"
@@ -31,6 +32,11 @@
 #define CMD_DEFINE_LIGHT_PROGRAM 4
 #define CMD_RESTART 5
 #define CMD_TRIGGER_GCS_LIGHT_EFFECT 6
+#define CMD_ARM_OR_DISARM 7
+
+struct data_arm_or_disarm {
+  uint8_t arm;  /* 0 = disarm, 1 = arm, 2 = force-disarm, 3 = force-arm (not used yet) */
+} __attribute__((packed));
 
 struct data_define_program {
   uint8_t programId;
@@ -55,6 +61,7 @@ static struct {
 } paramIds;
 
 static void droneShowSrvCrtpCB(CRTPPacket* pk);
+static void handleArmOrDisarmCommandPacket(CRTPPacket* pk);
 static void handleDefineLightProgramPacket(CRTPPacket* pk);
 static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk);
 static void updatePacketWithStatusInformation(CRTPPacket* pk);
@@ -129,6 +136,10 @@ static void droneShowSrvProcessControlPacket(CRTPPacket* pk) {
       handleTriggerGcsLightEffectPacket(pk);
       break;
 
+    case CMD_ARM_OR_DISARM:
+      handleArmOrDisarmCommandPacket(pk);
+      break;
+
     default:
       return;
   }
@@ -142,10 +153,31 @@ static void droneShowSrvCrtpCB(CRTPPacket* pk) {
   }
 }
 
+static void handleArmOrDisarmCommandPacket(CRTPPacket* pk) {
+  struct data_arm_or_disarm data = *((struct data_arm_or_disarm*)(pk->data + 1));
+  
+  /* put the response in the packet and trim it */
+  if (pk->size >= sizeof(struct data_arm_or_disarm) + 1) {
+    bool shouldBeArmed = data.arm & 1;
+    bool forced = data.arm & 2;
+
+    systemSetArmed(shouldBeArmed);
+    if (!shouldBeArmed && forced) {
+      armingForceDisarm();
+    }
+
+    pk->size = 3;
+    pk->data[2] = 0;
+  } else {
+    pk->size = 3;
+    pk->data[2] = EINVAL;
+  }
+}
+
 static void handleDefineLightProgramPacket(CRTPPacket* pk) {
   struct data_define_program data = *((struct data_define_program*)(pk->data + 1));
 
-  /* put the response in the reply and trim the packet */
+  /* put the response in the packet and trim it */
   if (pk->size >= sizeof(struct data_define_program) + 1) {
     pk->size = 3;
     pk->data[2] = lightProgramPlayerDefineProgram(data.programId, data.description);
@@ -159,7 +191,7 @@ static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk) {
   struct data_trigger_light_effect data = *((struct data_trigger_light_effect*)(pk->data + 1));
   uint8_t color[3];
 
-  /* put the response in the reply and trim the packet */
+  /* put the response in the packet and trim it */
   if (pk->size >= sizeof(struct data_trigger_light_effect) + 1) {
     color[0] = data.color[0];
     color[1] = data.color[1];
