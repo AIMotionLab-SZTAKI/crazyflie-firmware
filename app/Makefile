@@ -66,8 +66,8 @@ VPATH += src/
 INCLUDES += -Iinterface/
 
 # Drone show module
-PROJ_OBJ += app.o crtp_drone_show_service.o drone_show.o gcs_light_effects.o \
-            light_program.o preflight.o
+PROJ_OBJ += app.o arming.o crtp_drone_show_service.o drone_show.o \
+            gcs_light_effects.o light_program.o preflight.o
 
 # LED light control library
 INCLUDES += -Ivendor/ledctrl/include

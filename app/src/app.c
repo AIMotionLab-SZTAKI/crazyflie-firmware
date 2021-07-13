@@ -10,6 +10,7 @@
 #include "system.h"
 #include "static_mem.h"
 
+#include "arming.h"
 #include "crtp_drone_show_service.h"
 #include "drone_show.h"
 #include "gcs_light_effects.h"
@@ -50,6 +51,7 @@ static bool appTest()
 {
   bool pass = isInit;
 
+  pass &= armingTest();
   pass &= preflightTest();
   pass &= gcsLightEffectsTest();
   pass &= lightProgramPlayerTest();
@@ -63,6 +65,7 @@ static void appTask(void *param)
 {
   systemWaitStart();
 
+  armingInit();
   preflightInit();
   gcsLightEffectsInit();
   droneShowSrvInit();

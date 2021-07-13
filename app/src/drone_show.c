@@ -4,6 +4,7 @@
 #include "semphr.h"
 #include "timers.h"
 
+#include "arming.h"
 #include "commander.h"
 #include "crtp_commander_high_level.h"
 #include "drone_show.h"
@@ -13,6 +14,7 @@
 #include "param.h"
 #include "pm.h"
 #include "preflight.h"
+#include "system.h"
 #include "stabilizer.h"
 #include "supervisor.h"
 
@@ -374,7 +376,11 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_LANDED:
       /* This is a sink state; we can go back to the idle state if we receive
        * a STOP or RESTART command, or we also go back automatically after
-       * 30 seconds */
+       * 30 seconds. Also, we disarm the motors if we have been in the LANDED
+       * state for more than five seconds. */
+      if (disarmAutomaticallyAfterLanding() && systemIsArmed() && getSecondsSinceLastStateSwitch() > 5) {
+        armingForceDisarm();
+      }
       if (getSecondsSinceLastStateSwitch() > 30) {
         setState(STATE_IDLE);
       }
@@ -539,6 +545,11 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   if (state == STATE_IDLE || state == STATE_LANDED) {
     crtpCommanderHighLevelStop();
     paramSetInt(paramIds.highLevelCommanderEnabled, 0);
+  }
+
+  /* If we have entered the error state, force-disarm the system immediately */
+  if (state == STATE_ERROR) {
+    armingForceDisarm();
   }
 
   /* If we have left the idle state and we did not go into the error state,
