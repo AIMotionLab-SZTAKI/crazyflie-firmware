@@ -63,7 +63,6 @@ static xTimerHandle timer;
 static bool isInit = false;
 static bool isEnabled = false;
 static bool isTesting = false;
-static bool wasInTestingMode = false;
 
 /** Value of the internal clock of the Crazyflie when the show clock starts,
  * in microseconds.
@@ -78,7 +77,9 @@ static uint64_t lastStateSwitchAt;
  * Relative timestamp when the trajectory that the Crazyflie should fly starts
  * in the show timeline, in seconds. Note that the Crazyflie actually needs to
  * take off earlier than this time, precisely by TAKEOFF_DURATION_MSEC
- * milliseconds.
+ * milliseconds. Typically, you do not need this variable; you need to call
+ * getTakeoffTimeRelativeToStartTimeInSeconds() instead, which takes into account
+ * the takeoff duration.
  */
 static float startOfTrajectoryRelativeToStartTime;
 
@@ -109,6 +110,8 @@ static void droneShowTimer(xTimerHandle timer);
 static uint8_t desiredLEDEffectForState(show_state_t state);
 static float getSecondsSinceLastStateSwitch();
 static float getSecondsSinceStart();
+static float getSecondsSinceTakeoff();
+static float getTakeoffTimeRelativeToStartTimeInSeconds();
 static uint64_t getUsecTimestampForLightPatterns();
 static bool hasStartTimePassed();
 static bool hasTakeoffTimePassed();
@@ -332,6 +335,9 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_WAIT_FOR_START_SIGNAL:
       if (getPreflightCheckSummary() != preflightResultPass) {
         setState(STATE_WAIT_FOR_PREFLIGHT_CHECK);
+      } else if (getSecondsSinceTakeoff() > -5) {
+        /* Arm the drone */
+        armAutomaticallyIfNeeded();
       } else if (hasStartTimePassed()) {
         setState(STATE_WAIT_FOR_TAKEOFF_TIME);
       }
@@ -378,7 +384,7 @@ static void droneShowTimer(xTimerHandle timer) {
        * a STOP or RESTART command, or we also go back automatically after
        * 30 seconds. Also, we disarm the motors if we have been in the LANDED
        * state for more than five seconds. */
-      if (disarmAutomaticallyAfterLanding() && systemIsArmed() && getSecondsSinceLastStateSwitch() > 5) {
+      if (armingShouldDisarmAutomaticallyAfterLanding() && systemIsArmed() && getSecondsSinceLastStateSwitch() > 5) {
         armingForceDisarm();
       }
       if (getSecondsSinceLastStateSwitch() > 30) {
@@ -428,6 +434,42 @@ static float getSecondsSinceStart() {
 }
 
 /**
+ * Returns the number of seconds elapsed since the designated takeoff time of
+ * the drone within the show; negative if the drone does not have to take off
+ * yet but we have a scheduled start time; minus infinity if we have no scheduled
+ * start time yet.
+ * 
+ * Note that this function clamps the takeoff time of the drone such that it is
+ * never earlier than the start of the show, even if we would need more time for
+ * takeoff. This is to ensure that the drone never starts moving before the
+ * designated start time.
+ */
+static float getSecondsSinceTakeoff() {
+  float takeoffTimeRelativeToStartTime = getTakeoffTimeRelativeToStartTimeInSeconds();
+  if (takeoffTimeRelativeToStartTime < 0) {
+    /* This happens if the start time of the trajectory of the drone within the
+     * show is less than the time we have allocated for the takeoff; in that case,
+     * takeoffTimeRelativeToStartTime is negative. However, we still don't
+     * ever want to start taking off _before_ the designated start time, so
+     * we compare secondsSinceStart with zero instead. */
+    takeoffTimeRelativeToStartTime = 0;
+  }
+
+  return getSecondsSinceStart() - takeoffTimeRelativeToStartTime;
+}
+
+/**
+ * Returns the number of seconds between the start time of the show and the
+ * takeoff time of the drone. The result is positive if the takeoff time is
+ * _after_ the start of the show and negative if the takeoff time is _before_
+ * the show (which can happen if the drone has to take off right at the start
+ * of the show because we need to allocate some time for the takeoff itself).
+ */
+static float getTakeoffTimeRelativeToStartTimeInSeconds() {
+  return startOfTrajectoryRelativeToStartTime - TAKEOFF_DURATION_MSEC / 1000.0f;
+}
+
+/**
  * Returns a microsecond timestamp that is suitable for (synchronized) light
  * patterns across multiple Crazyflie drones if an external timing signal is
  * provided.
@@ -452,29 +494,7 @@ static bool hasStartTimePassed() {
  * Returns whether the takeoff time has passed and it is time to take off.
  */
 static bool hasTakeoffTimePassed() {
-  float secondsSinceStart;
-  float takeoffTimeRelativeToStartTime;
-
-  if (startTime <= 0) {
-    /* No start time yet */
-    return 0;
-  }
-
-  takeoffTimeRelativeToStartTime = (
-    startOfTrajectoryRelativeToStartTime - TAKEOFF_DURATION_MSEC / 1000.0f
-  );
-
-  secondsSinceStart = getSecondsSinceStart();
-  if (takeoffTimeRelativeToStartTime < 0) {
-    /* This happens if the start time of the trajectory of the drone within the
-     * show is less than the time we have allocated for the takeoff; in that case,
-     * takeoffTimeRelativeToStartTime is negative. However, we still don't
-     * ever want to start taking off _before_ the designated start time, so
-     * we compare secondsSinceStart with zero instead. */
-    return secondsSinceStart >= 0;
-  } else {
-    return (secondsSinceStart >= takeoffTimeRelativeToStartTime);
-  }
+  return startTime > 0 && getSecondsSinceTakeoff() >= 0;
 }
 
 /**
@@ -585,6 +605,10 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
    * We do this separately from the trajectory following to ensure that
    * we always take off vertically */
   if (state == STATE_TAKEOFF) {
+    /* Arm the drone (in case we weren't armed yet -- although we should be,
+     * since we do that five seconds before the takeoff) */
+    armAutomaticallyIfNeeded();
+  
     /* Start the takeoff */
     crtpCommanderHighLevelTakeoffWithVelocity(
       TAKEOFF_HEIGHT_METERS, TAKEOFF_VELOCITY_METERS_PER_SEC, /* relative = */ 1
@@ -762,7 +786,7 @@ static bool shouldRunLightProgramInState(show_state_t state) {
 static bool shouldStartWithFailingPreflightChecks() {
   /* It makes absolutely no sense to start if there is no trajectory uploaded
    * to the drone. In all other cases, it _might_ make sense to start (although
-   * it is somewhat unsafe */
+   * it is somewhat unsafe) */
   return isPreflightCheckPassing(PREFLIGHT_CHECK_TRAJECTORY_AND_LIGHTS);
 }
 
@@ -866,6 +890,8 @@ static void updateLEDRing() {
  * Updates whether the drone is currently in testing mode.
  */
 static void updateTestingMode() {
+  static bool wasInTestingMode = false;
+
   /* Prevent the motors from spinning if we are in testing mode. Note that we
    * act only if the value of droneShowIsInTestingMode() changes -- this is to
    * ensure that we do not start fighting with the tumble detector if the drone

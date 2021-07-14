@@ -29,11 +29,19 @@ bool armingTest(void) {
   return isInit;
 }
 
-bool armAutomaticallyBeforeTakeoff(void) {
+bool armingShouldArmAutomaticallyBeforeTakeoff(void) {
   return true;
 }
 
-bool disarmAutomaticallyAfterLanding(void) {
+void armAutomaticallyIfNeeded(void) {
+  if (!armingShouldArmAutomaticallyBeforeTakeoff() || systemIsArmed()) {
+    return;
+  }
+
+  systemSetArmed(true);
+}
+
+bool armingShouldDisarmAutomaticallyAfterLanding(void) {
 #ifdef START_DISARMED
   return true;
 #else

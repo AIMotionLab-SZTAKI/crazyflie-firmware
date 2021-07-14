@@ -18,18 +18,24 @@ void armingInit(void);
 bool armingTest(void);
 
 /**
- * Returns whether the drone arms itself automatically before takeoff.
+ * Arms the drone if it is set to automatic arming before takeoff and it is
+ * not armed yet.
  */
-bool armAutomaticallyBeforeTakeoff(void);
-
-/**
- * Returns whether the drone disarms itself automatically after landing.
- */
-bool disarmAutomaticallyAfterLanding(void);
+void armAutomaticallyIfNeeded(void);
 
 /**
  * Force-disarm the drone even if it is currently force-armed.
  */
 void armingForceDisarm(void);
+
+/**
+ * Returns whether the drone arms itself automatically before takeoff.
+ */
+bool armingShouldArmAutomaticallyBeforeTakeoff(void);
+
+/**
+ * Returns whether the drone disarms itself automatically after landing.
+ */
+bool armingShouldDisarmAutomaticallyAfterLanding(void);
 
 #endif // __DRONE_SHOW_H__
