@@ -13,12 +13,21 @@
 #include "param.h"
 #include "pm.h"
 #include "preflight.h"
+#include "pulse_processor.h"
 #include "sensors.h"
 #include "system.h"
 #include "worker.h"
 
 #define DEBUG_MODULE "PREFLT"
 #include "debug.h"
+
+#ifndef PREFLIGHT_MIN_LH_BS_COUNT
+#  define PREFLIGHT_MIN_LH_BS_COUNT 0
+#endif
+
+#ifndef PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
+#  define PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT 0
+#endif
 
 #ifndef PREFLIGHT_MIN_LOCO_ANCHOR_COUNT
 #  define PREFLIGHT_MIN_LOCO_ANCHOR_COUNT 0
@@ -47,6 +56,14 @@ static bool isEnabled = false;
 static bool isForcedToPass = false;
 static bool kalmanFilterResetRequested = false;
 static float homeCoordinate[3] = { 0, 0, -10000 };
+
+static struct {
+  logVarId_t kalmanPosVariance[3];
+  logVarId_t yaw;
+  logVarId_t lighthouseBsHasCalibrationData;
+  logVarId_t lighthouseBsHasGeometryData;
+  logVarId_t lighthouseBsActive;
+} logIds;
 
 static struct {
   paramVarId_t kalmanInitialX;
@@ -84,6 +101,27 @@ void preflightInit() {
     !PARAM_VARID_IS_VALID(paramIds.kalmanResetEstimation)
   ) {
     /* required parameters missing from firmware */
+    return;
+  }
+
+  logIds.kalmanPosVariance[0] = logGetVarId("kalman", "varPX");
+  logIds.kalmanPosVariance[1] = logGetVarId("kalman", "varPY");
+  logIds.kalmanPosVariance[2] = logGetVarId("kalman", "varPZ");
+  logIds.yaw = logGetVarId("stateEstimate", "yaw");
+  logIds.lighthouseBsActive = logGetVarId("lighthouse", "bsActive");
+  logIds.lighthouseBsHasCalibrationData = logGetVarId("lighthouse", "bsCalVal");
+  logIds.lighthouseBsHasGeometryData = logGetVarId("lighthouse", "bsGeoVal");
+
+  if (
+    !logVarIdIsValid(logIds.kalmanPosVariance[0]) ||
+    !logVarIdIsValid(logIds.kalmanPosVariance[1]) ||
+    !logVarIdIsValid(logIds.kalmanPosVariance[2]) ||
+    !logVarIdIsValid(logIds.yaw) ||
+    !logVarIdIsValid(logIds.lighthouseBsActive) ||
+    !logVarIdIsValid(logIds.lighthouseBsHasCalibrationData) ||
+    !logVarIdIsValid(logIds.lighthouseBsHasGeometryData)
+  ) {
+    /* required log variables missing from firmware */
     return;
   }
 
@@ -215,17 +253,11 @@ static preflight_check_result_t testBattery() {
  * position).
  */
 static preflight_check_result_t testHomePosition() {
-  static int yawVarId = -1;
   point_t pos;
   float dxy, dz, yaw;
 
-  /* fetch variable IDs if needed */
-  if (yawVarId < 0) {
-    yawVarId = logGetVarId("stateEstimate", "yaw");
-  }
-
   /* check yaw -- it must be close to zero */
-  yaw = logGetFloat(yawVarId);
+  yaw = logGetFloat(logIds.yaw);
   if (yaw >= 180) {
     yaw -= 360.0f;
   }
@@ -258,10 +290,10 @@ static preflight_check_result_t testHomePosition() {
  * filter is stable enough.
  */
 static preflight_check_result_t testKalmanFilter() {
-  static logVarId_t kalmanVarIds[3] = { 0xffffu, 0xffffu, 0xffffu };
   static float varianceLog[KALMAN_VARIANCE_LOG_LENGTH][3];
   static uint16_t writeIndex;
   static uint8_t failureCounter = 0;
+  static bool initialized = 0;
 
   uint16_t i, dim, count;
   float minValue, maxValue;
@@ -273,24 +305,13 @@ static preflight_check_result_t testKalmanFilter() {
 
     kalmanFilterResetRequested = 0;
     failureCounter = 0;
-    kalmanVarIds[0] = 0xffffu;     /* to clear the variance log */
+    initialized = 0;  /* to clear the variance log */
   }
 
   /* Perform initializations if needed (at first invocation and after every
    * reset of the Kalman filter) */
-  if (!logVarIdIsValid(kalmanVarIds[0])) {
-    /* Initialization: get log variable IDs and clear variance log */
-    kalmanVarIds[0] = logGetVarId("kalman", "varPX");
-    kalmanVarIds[1] = logGetVarId("kalman", "varPY");
-    kalmanVarIds[2] = logGetVarId("kalman", "varPZ");
-
-    for (dim = 0; dim < 3; dim++) {
-      if (!logVarIdIsValid(kalmanVarIds[dim]) || logGetType(kalmanVarIds[dim]) != LOG_FLOAT) {
-        kalmanVarIds[0] = 0xffffu;
-        FAIL;
-      }
-    }
-
+  if (!initialized) {
+    /* Clear Kalman filter variance log */
     for (dim = 0; dim < 3; dim++) {
       for (i = 0; i < KALMAN_VARIANCE_LOG_LENGTH; i++) {
         varianceLog[i][dim] = FLT_MAX;
@@ -298,11 +319,12 @@ static preflight_check_result_t testKalmanFilter() {
     }
 
     writeIndex = 0;
+    initialized = 1;
   }
 
   /* Store the current variances from the filter */
   for (dim = 0; dim < 3; dim++) {
-    varianceLog[writeIndex][dim] = logGetFloat(kalmanVarIds[dim]);
+    varianceLog[writeIndex][dim] = logGetFloat(logIds.kalmanPosVariance[dim]);
   }
 
   /* Be optimistic :) */
@@ -369,20 +391,49 @@ static preflight_check_result_t testKalmanFilter() {
  */
 static preflight_check_result_t testPositioningSystem() {
   uint8_t anchorList[PREFLIGHT_MIN_LOCO_ANCHOR_COUNT];
-  uint8_t count = 0;
+  uint8_t numActive = 0, numEnabled = 0;
 
   if (PREFLIGHT_MIN_LOCO_ANCHOR_COUNT > 0) {
-    count = locoDeckGetAnchorIdList(anchorList, PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
-    FAIL_IF(count < PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
+    /* Positioning system is UWB */
+    numEnabled = locoDeckGetAnchorIdList(anchorList, PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
+    FAIL_IF(numEnabled < PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
+
+    if (PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT > 0) {
+      numActive = locoDeckGetActiveAnchorIdList(anchorList, PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
+    } else {
+      numActive = 0;
+    }
+
+    PASS_IF_AND_ONLY_IF(numActive >= PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT);
+  } else if (PREFLIGHT_MIN_LH_BS_COUNT > 0) {
+    /* Positioning system is Lighthouse */
+    unsigned int baseStationsWithCalibrationAndGeometryData = (
+      logGetUint(logIds.lighthouseBsHasCalibrationData) &
+      logGetUint(logIds.lighthouseBsHasGeometryData)
+    );
+    unsigned int activeBaseStations = logGetUint(logIds.lighthouseBsActive);
+    uint8_t i, mask = 1;
+
+    for (i = 0; i < PULSE_PROCESSOR_N_BASE_STATIONS; i++) {
+      if (baseStationsWithCalibrationAndGeometryData & mask) {
+        numEnabled++;
+
+        if (activeBaseStations & mask) {
+          numActive++;
+        }
+      }
+
+      mask <<= 1;
+    }
+
+    // DEBUG_PRINT("LH BS: %d out of %d\n", numActive, numEnabled);
+
+    PASS_IF_AND_ONLY_IF(
+      numEnabled >= PREFLIGHT_MIN_LH_BS_COUNT &&
+      numActive >= PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
+    );
   } else {
     SKIP;
-  }
-
-  if (PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT > 0) {
-    count = locoDeckGetActiveAnchorIdList(anchorList, PREFLIGHT_MIN_LOCO_ANCHOR_COUNT);
-    PASS_IF_AND_ONLY_IF(count >= PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT);
-  } else {
-    PASS;
   }
 }
 

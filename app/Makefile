@@ -2,7 +2,8 @@
 
 # The Crazyflie model that we are building the firmware for. Possible values:
 #
-# stock: basic Crazyflie 2.1 with LED ring and UWB module
+# stock: basic Crazyflie 2.1 with LED ring and UWB deck
+# stock-lighthouse: basic Crazyflie 2.1 with LED ring and Lighthouse deck
 # show-proto-v1: show drone prototype sent to us by Bitcraze in Dec 2020
 # show-proto-v2: Nina's show drone prototype with Lighthouse instead of UWB
 #
@@ -49,6 +50,12 @@ ifeq ($(CF_MODEL_POSITIONING),uwb)
 # Specify minimum number of UWB anchors that have to be configured and that have
 # to be active in order for the preflight checks to pass
 CFLAGS += -DPREFLIGHT_MIN_LOCO_ANCHOR_COUNT=6 -DPREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT=6
+endif
+
+ifeq ($(CF_MODEL_POSITIONING),lighthouse)
+# Specify number of Lighthouse base stations that we need in order for the
+# preflight checks to pass
+CFLAGS += -DPREFLIGHT_MIN_LH_BS_COUNT=2 -DPREFLIGHT_MIN_ACTIVE_LH_BS_COUNT=1
 endif
 
 # Specify minimum number of trajectories that have to be uploaded before flight
