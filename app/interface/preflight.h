@@ -57,6 +57,11 @@ bool preflightTest(void);
 void preflightSetEnabled(bool value);
 
 /**
+ * Sets whether the preflight module is forced to pass.
+ */
+void preflightSetForcedToPass(bool value);
+
+/**
  * Returns the detailed results of the preflight tests.
  */
 preflight_check_status_t getPreflightCheckStatus();
