@@ -49,7 +49,8 @@
 #define KALMAN_VARIANCE_LOG_LENGTH 10     /* 5 seconds @ 2 Hz */
 #define KALMAN_VARIANCE_THRESHOLD 0.001f
 
-static xTimerHandle timer;
+static StaticTimer_t timerBuffer;
+
 static bool isInit = false;
 
 static bool isEnabled = false;
@@ -86,7 +87,7 @@ void preflightInit() {
     return;
   }
 
-  timer = xTimerCreate("PreflightTimer", M2T(PREFLIGHT_CHECK_INTERVAL_MSEC), pdTRUE, NULL, preflightTimer);
+  xTimerHandle timer = xTimerCreateStatic("preflightTimer", M2T(PREFLIGHT_CHECK_INTERVAL_MSEC), pdTRUE, NULL, preflightTimer, &timerBuffer);
   xTimerStart(timer, PREFLIGHT_CHECK_INTERVAL_MSEC);
 
   paramIds.kalmanInitialX = paramGetVarId("kalman", "initialX");
@@ -145,6 +146,10 @@ void preflightSetEnabled(bool value) {
     preflightCheckSummary = preflightResultOff;
     preflightCheckStatus = preflightResultOff;
   }
+}
+
+void preflightSetForcedToPass(bool value) {
+  isForcedToPass = value;
 }
 
 bool preflightTest() {
@@ -281,6 +286,8 @@ static preflight_check_result_t testHomePosition() {
      * so reset the Kalman filter to home */
     requestKalmanFilterReset();
   }
+
+  /* TODO(ntamas): maybe use smaller tolerance with Lighthouse? */
 
   PASS_IF_AND_ONLY_IF(dxy <= 0.5f && dz <= 0.5f);
 }
@@ -425,8 +432,6 @@ static preflight_check_result_t testPositioningSystem() {
 
       mask <<= 1;
     }
-
-    // DEBUG_PRINT("LH BS: %d out of %d\n", numActive, numEnabled);
 
     PASS_IF_AND_ONLY_IF(
       numEnabled >= PREFLIGHT_MIN_LH_BS_COUNT &&

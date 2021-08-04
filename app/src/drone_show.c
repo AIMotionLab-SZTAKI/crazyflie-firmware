@@ -59,7 +59,7 @@ static const char* stateMessages[NUM_STATES] = {
 #define LANDING_VELOCITY_METERS_PER_SEC 0.5f
 #define LOW_BATTERY_DURATION_MSEC 5000
 
-static xTimerHandle timer;
+static StaticTimer_t timerBuffer;
 static bool isInit = false;
 static bool isEnabled = false;
 static bool isTesting = false;
@@ -139,7 +139,7 @@ void droneShowInit() {
 
   vSemaphoreCreateBinary(pendingCommandsSemaphore);
 
-  timer = xTimerCreate("ShowTimer", M2T(LOOP_INTERVAL_MSEC), pdTRUE, NULL, droneShowTimer);
+  xTimerHandle timer = xTimerCreateStatic("showTimer", M2T(LOOP_INTERVAL_MSEC), pdTRUE, NULL, droneShowTimer, &timerBuffer);
   xTimerStart(timer, LOOP_INTERVAL_MSEC);
 
   /* Retrieve the IDs of the log variables and parameters that we will need */
@@ -647,6 +647,12 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
     crtpCommanderHighLevelLandWithVelocity(landingHeight, LANDING_VELOCITY_METERS_PER_SEC, /* relative = */ 0);
   }
 
+  /* If we have landed and the preflight checks were forced to pass, clear the
+   * flag so the checks become active for the next flight again */
+  if (state == STATE_LANDED) {
+    preflightSetForcedToPass(false);
+  }
+  
   /* Return whether the state switch was successful */
   return success;
 }
