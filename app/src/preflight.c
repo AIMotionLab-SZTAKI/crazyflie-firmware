@@ -21,6 +21,10 @@
 #define DEBUG_MODULE "PREFLT"
 #include "debug.h"
 
+#ifndef PREFLIGHT_MIN_BATTERY_VOLTAGE
+#  define PREFLIGHT_MIN_BATTERY_VOLTAGE 3.8f
+#endif
+
 #ifndef PREFLIGHT_MIN_LH_BS_COUNT
 #  define PREFLIGHT_MIN_LH_BS_COUNT 0
 #endif
@@ -249,7 +253,7 @@ static void requestKalmanFilterReset(void) {
  * for a safe flight.
  */
 static preflight_check_result_t testBattery() {
-  PASS_IF_AND_ONLY_IF(pmGetBatteryVoltage() > 3.8f);
+  PASS_IF_AND_ONLY_IF(pmGetBatteryVoltage() >= PREFLIGHT_MIN_BATTERY_VOLTAGE);
 }
 
 /**

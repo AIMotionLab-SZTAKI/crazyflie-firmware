@@ -14,3 +14,4 @@ CFLAGS += -DENABLE_ONESHOT125 -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000
 ## by multiplying whatever we've had with 2 since the new show drone prototype
 ## used two cells.
 CFLAGS += -DLOW_VOLTAGE=6.4f -DCRITICAL_LOW_VOLTAGE=6.0f
+CFLAGS += -DPREFLIGHT_MIN_BATTERY_VOLTAGE=7.2f

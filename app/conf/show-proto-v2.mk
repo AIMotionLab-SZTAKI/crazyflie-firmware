@@ -13,3 +13,5 @@ CFLAGS += -DENABLE_ONESHOT125
 # Start disarmed; use some idle thrust as well. Enable this if needed.
 # CFLAGS += -DSTART_DISARMED -DDEFAULT_IDLE_THRUST=5000
 
+# Default preflight battery voltage lowered by request from Nina
+CFLAGS += -DPREFLIGHT_MIN_BATTERY_VOLTAGE=3.5f
