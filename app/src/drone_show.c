@@ -51,11 +51,14 @@ static const char* stateMessages[NUM_STATES] = {
 };
 #endif
 
+#ifndef SHOW_TAKEOFF_HEIGHT
+#  define SHOW_TAKEOFF_HEIGHT 1.0f
+#endif
+
 /* 20fps because we are now driving the LED light from the loop */
 #define LOOP_INTERVAL_MSEC 50
-#define TAKEOFF_HEIGHT_METERS 1.0f
 #define TAKEOFF_DURATION_MSEC 2000
-#define TAKEOFF_VELOCITY_METERS_PER_SEC (TAKEOFF_HEIGHT_METERS * 1000.0f / TAKEOFF_DURATION_MSEC)
+#define TAKEOFF_VELOCITY_METERS_PER_SEC (SHOW_TAKEOFF_HEIGHT * 1000.0f / TAKEOFF_DURATION_MSEC)
 #define LANDING_VELOCITY_METERS_PER_SEC 0.5f
 #define LOW_BATTERY_DURATION_MSEC 5000
 
@@ -611,7 +614,7 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   
     /* Start the takeoff */
     crtpCommanderHighLevelTakeoffWithVelocity(
-      TAKEOFF_HEIGHT_METERS, TAKEOFF_VELOCITY_METERS_PER_SEC, /* relative = */ 1
+      SHOW_TAKEOFF_HEIGHT, TAKEOFF_VELOCITY_METERS_PER_SEC, /* relative = */ 1
     );
 
     /* Start a counter as well so we indicate that the trajectory starts with

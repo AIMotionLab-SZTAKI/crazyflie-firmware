@@ -48,14 +48,18 @@ CFLAGS += -DCF_MASS=$(CF_MODEL_MASS)
 
 ifeq ($(CF_MODEL_POSITIONING),uwb)
 # Specify minimum number of UWB anchors that have to be configured and that have
-# to be active in order for the preflight checks to pass
+# to be active in order for the preflight checks to pass. Also, use a safer
+# takeoff height of 1 meters.
 CFLAGS += -DPREFLIGHT_MIN_LOCO_ANCHOR_COUNT=6 -DPREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT=6
+CFLAGS += -DSHOW_TAKEOFF_HEIGHT=1.0f
 endif
 
 ifeq ($(CF_MODEL_POSITIONING),lighthouse)
 # Specify number of Lighthouse base stations that we need in order for the
-# preflight checks to pass
+# preflight checks to pass. Use a takeoff height of 0.5 meters (safe enough
+# with the Lighthouse system)
 CFLAGS += -DPREFLIGHT_MIN_LH_BS_COUNT=2 -DPREFLIGHT_MIN_ACTIVE_LH_BS_COUNT=1
+CFLAGS += -DSHOW_TAKEOFF_HEIGHT=0.5f
 endif
 
 # Specify minimum number of trajectories that have to be uploaded before flight
