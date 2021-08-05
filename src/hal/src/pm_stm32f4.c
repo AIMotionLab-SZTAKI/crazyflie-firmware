@@ -292,7 +292,11 @@ bool pmIsBatteryLow(void) {
 }
 
 bool pmIsChargerConnected(void) {
+#ifdef DISABLE_CHARGER_DETECTION
+  return false;
+#else
   return (pmState == charging) || (pmState == charged);
+#endif
 }
 
 bool pmIsCharging(void) {
