@@ -11,6 +11,7 @@
 #include "crtp_drone_show_service.h"
 #include "drone_show.h"
 #include "estimator_kalman.h"
+#include "fence.h"
 #include "gcs_light_effects.h"
 #include "light_program.h"
 #include "log.h"
@@ -33,9 +34,14 @@
 #define CMD_RESTART 5
 #define CMD_TRIGGER_GCS_LIGHT_EFFECT 6
 #define CMD_ARM_OR_DISARM 7
+#define CMD_DEFINE_GEOFENCE 8
 
 struct data_arm_or_disarm {
   uint8_t arm;  /* 0 = disarm, 1 = arm, 2 = force-disarm, 3 = force-arm (not used yet) */
+} __attribute__((packed));
+
+struct data_define_geofence {
+  struct fenceLocationDescription description;
 } __attribute__((packed));
 
 struct data_define_program {
@@ -62,6 +68,7 @@ static struct {
 
 static void droneShowSrvCrtpCB(CRTPPacket* pk);
 static void handleArmOrDisarmCommandPacket(CRTPPacket* pk);
+static void handleDefineGeofencePacket(CRTPPacket* pk);
 static void handleDefineLightProgramPacket(CRTPPacket* pk);
 static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk);
 static void updatePacketWithStatusInformation(CRTPPacket* pk);
@@ -140,6 +147,10 @@ static void droneShowSrvProcessControlPacket(CRTPPacket* pk) {
       handleArmOrDisarmCommandPacket(pk);
       break;
 
+    case CMD_DEFINE_GEOFENCE:
+      handleDefineGeofencePacket(pk);
+      break;
+
     default:
       return;
   }
@@ -168,6 +179,19 @@ static void handleArmOrDisarmCommandPacket(CRTPPacket* pk) {
 
     pk->size = 3;
     pk->data[2] = 0;
+  } else {
+    pk->size = 3;
+    pk->data[2] = EINVAL;
+  }
+}
+
+static void handleDefineGeofencePacket(CRTPPacket* pk) {
+  struct data_define_geofence data = *((struct data_define_geofence*)(pk->data + 1));
+
+  /* put the response in the packet and trim it */
+  if (pk->size >= sizeof(struct data_define_geofence) + 1) {
+    pk->size = 3;
+    pk->data[2] = fenceSetup(&data.description);
   } else {
     pk->size = 3;
     pk->data[2] = EINVAL;
@@ -238,7 +262,9 @@ static void updatePacketWithStatusInformation(CRTPPacket* pk) {
     /* is the drone show in testing mode? */
     (droneShowIsInTestingMode() ? (1 << 4) : 0) |
     /* is the drone _disarmed_? (backwards compatibility) */
-    (systemIsArmed() ? 0 : (1 << 5))
+    (systemIsArmed() ? 0 : (1 << 5)) |
+    /* is the geofence breached? */
+    (fenceIsBreached() ? (1 << 6) : 0)
   );
 
   /* preflight check status */

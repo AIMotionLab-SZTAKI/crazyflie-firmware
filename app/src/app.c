@@ -13,6 +13,7 @@
 #include "arming.h"
 #include "crtp_drone_show_service.h"
 #include "drone_show.h"
+#include "fence.h"
 #include "gcs_light_effects.h"
 #include "light_program.h"
 #include "preflight.h"
@@ -42,6 +43,9 @@ void appInit()
   // starts because it registers a new memory handler
   lightProgramPlayerInit();
 
+  // The fence module also has to be initialized here for the same reasons
+  fenceInit();
+
   STATIC_MEM_TASK_CREATE(appTask, appTask, "app", NULL, APP_PRIORITY);
 
   isInit = true;
@@ -52,6 +56,7 @@ static bool appTest()
   bool pass = isInit;
 
   pass &= armingTest();
+  pass &= fenceTest();
   pass &= preflightTest();
   pass &= gcsLightEffectsTest();
   pass &= lightProgramPlayerTest();
