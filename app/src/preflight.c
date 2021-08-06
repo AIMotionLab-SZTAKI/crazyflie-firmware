@@ -51,7 +51,13 @@
 
 #define PREFLIGHT_CHECK_INTERVAL_MSEC 500
 #define KALMAN_VARIANCE_LOG_LENGTH 10     /* 5 seconds @ 2 Hz */
-#define KALMAN_VARIANCE_THRESHOLD 0.001f
+
+/* Bitcraze uses a variance threshold of 0.001f in their example scripts,
+ * but it is apparently too low for Lighthouse because the interference
+ * between LH base stations occasionally creates a "spike" in the variance
+ * plot. The spike typically has a duration < 1s and a height that sometimes
+ * reaches 0.001f, making the Kalman preflight test fail temporarily */
+#define KALMAN_VARIANCE_THRESHOLD 0.002f
 
 static StaticTimer_t timerBuffer;
 
