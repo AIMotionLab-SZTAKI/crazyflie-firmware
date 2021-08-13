@@ -17,5 +17,6 @@ CFLAGS += -DENABLE_ONESHOT125
 # board (it always says that the charger is connected)
 CFLAGS += -DDISABLE_CHARGER_DETECTION
 
-# Default preflight battery voltage lowered by request from Nina
-CFLAGS += -DPREFLIGHT_MIN_BATTERY_VOLTAGE=3.5f
+# Use smoother (less aggressive) takeoff as it is perfectly fine with Lighthouse
+# and it looks less scary with a larger drone
+CFLAGS += -DSHOW_SMOOTH_TAKEOFF

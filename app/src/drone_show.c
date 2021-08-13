@@ -62,6 +62,22 @@ static const char* stateMessages[NUM_STATES] = {
 #define LANDING_VELOCITY_METERS_PER_SEC 0.5f
 #define LOW_BATTERY_DURATION_MSEC 5000
 
+/* Takeoff and landing velocities above are defined as _maximal_ velocities
+ * during the transition. However, the CF planner functions interpret it as an
+ * _average_ velocity. Since the CF planner plans a 7-th order, no-jerk,
+ * zero initial/terminal acceleration and velocity curve, one can calculate that
+ * the peak velocity at the midpoint is (2 + 3/16) times higher than the average
+ * velocity, so we need to take this into account. */
+/* TODO(ntamas): this is a temporary hack for Nina's show. We should sort this
+ * out properly; in particular, there should be two configuration #defines, one
+ * for the takeoff height and one for the takeoff velocity, everything else
+ * should be derived from that. Takeoff duration should not be a #define macro */
+#ifdef SHOW_SMOOTH_TAKEOFF
+#  define TAKEOFF_CORRECTION_FACTOR (2 + 3.0f / 16)
+#else
+#  define TAKEOFF_CORRECTION_FACTOR 1.0f
+#endif
+
 static StaticTimer_t timerBuffer;
 static bool isInit = false;
 static bool isEnabled = false;
@@ -91,7 +107,7 @@ static float startOfTrajectoryRelativeToStartTime;
  * set with a parameter. When controlled by Skybrush Live, this parameter is
  * set during the upload of the trajectory.
  */
-static float landingHeight;
+static float landingHeight = 0.0f;
 
 static uint8_t lastColor[] = {0x00, 0x00, 0x00};
 static xSemaphoreHandle pendingCommandsSemaphore;
@@ -469,7 +485,7 @@ static float getSecondsSinceTakeoff() {
  * of the show because we need to allocate some time for the takeoff itself).
  */
 static float getTakeoffTimeRelativeToStartTimeInSeconds() {
-  return startOfTrajectoryRelativeToStartTime - TAKEOFF_DURATION_MSEC / 1000.0f;
+  return startOfTrajectoryRelativeToStartTime - (TAKEOFF_DURATION_MSEC * TAKEOFF_CORRECTION_FACTOR) / 1000.0f;
 }
 
 /**
@@ -614,13 +630,15 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   
     /* Start the takeoff */
     crtpCommanderHighLevelTakeoffWithVelocity(
-      SHOW_TAKEOFF_HEIGHT, TAKEOFF_VELOCITY_METERS_PER_SEC, /* relative = */ 1
+      SHOW_TAKEOFF_HEIGHT,
+      TAKEOFF_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
+      /* relative = */ 1
     );
 
     /* Start a counter as well so we indicate that the trajectory starts with
      * a takeoff phase -- we will move to the "performing" phase when the
      * timeout is over */
-    waitCounter = ceilf(((float)TAKEOFF_DURATION_MSEC) / LOOP_INTERVAL_MSEC) - 1;
+    waitCounter = ceilf(((float)TAKEOFF_DURATION_MSEC) * TAKEOFF_CORRECTION_FACTOR / LOOP_INTERVAL_MSEC) - 1;
     lowBatteryCounter = 0;
   }
 
@@ -647,7 +665,11 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   if (!isStateOnGround(oldState) && (
     state == STATE_LANDING || state == STATE_LANDING_LOW_BATTERY
   )) {
-    crtpCommanderHighLevelLandWithVelocity(landingHeight, LANDING_VELOCITY_METERS_PER_SEC, /* relative = */ 0);
+    crtpCommanderHighLevelLandWithVelocity(
+      landingHeight,
+      LANDING_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
+      /* relative = */ 0
+    );
   }
 
   /* If we have landed and the preflight checks were forced to pass, clear the
