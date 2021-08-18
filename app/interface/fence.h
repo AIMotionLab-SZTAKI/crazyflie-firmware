@@ -7,6 +7,13 @@
 #ifndef __DRONE_SHOW_FENCE_H__
 #define __DRONE_SHOW_FENCE_H__
 
+enum FenceAction_e {
+  FENCE_ACTION_NONE = 0,
+  FENCE_ACTION_STOP_MOTORS = 1,
+  FENCE_ACTION_SHUTDOWN = 2,
+  FENCE_ACTION_LAND = 3,
+};
+
 enum FenceLocation_e {
   FENCE_LOCATION_INVALID = 0,
   FENCE_LOCATION_MEM     = 1,

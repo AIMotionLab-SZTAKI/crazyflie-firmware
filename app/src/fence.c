@@ -16,7 +16,10 @@
 #include "log.h"
 #include "mem.h"
 #include "param.h"
+#include "stabilizer.h"
 #include "stabilizer_types.h"
+#include "supervisor.h"
+#include "system.h"
 #include "worker.h"
 
 #define DEBUG_MODULE "FENCE"
@@ -67,11 +70,15 @@ static bool isInit = false;
 static uint8_t breachCounter = 0;
 static bool isEnabled = false;
 static bool isBreached = false;
+static enum FenceAction_e action = FENCE_ACTION_NONE;
 
-static void fenceClear();
-static void fenceClearCurrentBreach();
-static bool fenceIsPointInside(const point_t* p);
-static int fenceSetupFromMemory(struct fenceLocationDescription* description);
+static void clearCurrentBreach();
+static void clearFence();
+static void handleBreach();
+static bool isPointInsideFence(const point_t* p);
+static int setupFenceFromMemory(struct fenceLocationDescription* description);
+static void startNewBreach();
+
 static void fenceTimer(xTimerHandle timer);
 static void fenceWorker(void* data);
 
@@ -120,12 +127,12 @@ int fenceSetup(struct fenceLocationDescription* description) {
 
   switch (description->fenceLocation) {
     case FENCE_LOCATION_INVALID:
-      fenceClear();
+      clearFence();
       result = 0;
       break;
 
     case FENCE_LOCATION_MEM:
-      result = fenceSetupFromMemory(description);
+      result = setupFenceFromMemory(description);
       break;
 
     default:
@@ -134,7 +141,7 @@ int fenceSetup(struct fenceLocationDescription* description) {
 
   if (result == 0) {
     /* fence was updated so clear the current breach */
-    fenceClearCurrentBreach();
+    clearCurrentBreach();
   }
 
   return result;
@@ -155,20 +162,56 @@ bool fenceIsBreached() {
   return isBreached;
 }
 
-static void fenceClear() {
+static void clearFence() {
   memset(&activeFence, 0, sizeof(activeFence));
   activeFence.type = FENCE_TYPE_UNLIMITED;
 }
 
-static void fenceClearCurrentBreach() {
+/**
+ * Callback that is called when a previous fence breach has cleared.
+ */
+static void clearCurrentBreach() {
   breachCounter = 0;
   isBreached = false;
 }
 
 /**
+ * Callback that is called periodically from the fence worker during the time
+ * when the fence is breached.
+ */
+static void handleBreach() {
+  switch (action) {
+    case FENCE_ACTION_NONE:
+      /* No action needs to be taken */
+      break;
+
+    case FENCE_ACTION_STOP_MOTORS:
+      /* Activate emergency stop if the drone is flying */
+      if (supervisorIsFlying()) {
+        stabilizerSetEmergencyStop();
+      }
+      break;
+
+    case FENCE_ACTION_SHUTDOWN:
+      /* Shut down the system completely if the drone is flying */
+      if (supervisorIsFlying()) {
+        systemRequestShutdown();
+      }
+      break;
+
+    case FENCE_ACTION_LAND:
+      /* TODO(ntamas): turn off the motors if the drone has landed */
+      break;
+
+    default:
+      break;
+  }
+}
+
+/**
  * Returns whether the given point is inside the active geofence.
  */
-static bool fenceIsPointInside(const point_t* p) {
+static bool isPointInsideFence(const point_t* p) {
   switch (activeFence.type) {
     case FENCE_TYPE_UNLIMITED:
       return true;
@@ -192,10 +235,36 @@ static bool fenceIsPointInside(const point_t* p) {
 }
 
 /**
+ * Callback that is invoked when the fence has newly been breached (i.e. it
+ * was not breached before).
+ */
+static void startNewBreach() {
+  isBreached = true;
+
+  switch (action) {
+    case FENCE_ACTION_NONE:
+      /* No action needs to be taken */
+      break;
+
+    case FENCE_ACTION_STOP_MOTORS:
+    case FENCE_ACTION_SHUTDOWN:
+      /* No action needs to be taken; it will be handled in handleBreach() */
+      break;
+
+    case FENCE_ACTION_LAND:
+      /* TODO(ntamas): start landing if we are flying */
+      break;
+
+    default:
+      break;
+  }
+}
+
+/**
  * Sets up a geofence from a description stored within the Crazyflie memory
  * subsystem.
  */
-static int fenceSetupFromMemory(struct fenceLocationDescription* description) {
+static int setupFenceFromMemory(struct fenceLocationDescription* description) {
   struct fenceDefinition newFence;
   uint32_t offset, size;
   
@@ -264,19 +333,22 @@ static void fenceWorker(void* data) {
   point_t pos;
 
   if (!isEnabled) {
-    fenceClearCurrentBreach();
+    clearCurrentBreach();
     return;
   }
 
   estimatorKalmanGetEstimatedPos(&pos);
   
-  if (fenceIsPointInside(&pos)) {
-    fenceClearCurrentBreach();
+  if (isPointInsideFence(&pos)) {
+    clearCurrentBreach();
   } else {
     if (breachCounter <= (FENCE_BREACH_MIN_DURATION_MSEC - 1) / FENCE_CHECK_INTERVAL_MSEC) {
       breachCounter++;
     } else {
-      isBreached = true;
+      if (!isBreached) {
+        startNewBreach();
+      }
+      handleBreach();
     }
   }
 }
@@ -305,6 +377,7 @@ static bool handleMemWrite(const uint32_t memAddr, const uint8_t writeLen, const
 
 PARAM_GROUP_START(fence)
 PARAM_ADD(PARAM_UINT8, enabled, &isEnabled)
+PARAM_ADD(PARAM_UINT8, action, &action)
 PARAM_GROUP_STOP(fence)
 
 LOG_GROUP_START(fence)
