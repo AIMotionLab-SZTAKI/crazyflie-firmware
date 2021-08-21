@@ -9,6 +9,8 @@
 
 typedef enum {
   STATE_INITIALIZING = 0,
+
+  /* Normal show state sequence follows here */
   STATE_IDLE,
   STATE_WAIT_FOR_PREFLIGHT_CHECK,
   STATE_WAIT_FOR_START_SIGNAL,
@@ -22,6 +24,9 @@ typedef enum {
   STATE_LANDING_LOW_BATTERY,
   STATE_EXHAUSTED,
   STATE_ERROR,
+
+  /* Manual intervention */
+  STATE_MANUAL_CONTROL,
 
   /* Sentinel marker so we know how many states we have */
   NUM_STATES

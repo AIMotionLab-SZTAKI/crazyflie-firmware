@@ -48,6 +48,8 @@ static const char* stateMessages[NUM_STATES] = {
   "Battery low, landing.",
   "Battery flat.",
   "Unrecoverable error."
+
+  "Manual control.",
 };
 #endif
 
@@ -112,6 +114,7 @@ static float landingHeight = 0.0f;
 static uint8_t lastColor[] = {0x00, 0x00, 0x00};
 static xSemaphoreHandle pendingCommandsSemaphore;
 static uint8_t pendingCommands;
+static setpoint_t setpointForManualMode;
 static show_state_t state = STATE_INITIALIZING;
 static uint8_t waitCounter;
 static uint8_t lowBatteryCounter;
@@ -380,6 +383,9 @@ static void droneShowTimer(xTimerHandle timer) {
       if (crtpCommanderHighLevelIsTrajectoryFinished()) {
         /* show finished, let's land */
         setState(STATE_LANDING);
+      } else if (crtpCommanderHighLevelIsStopped()) {
+        /* high-level commander was stopped, switch to loitering? */
+        /* TODO(ntamas) */
       }
       break;
 
@@ -579,9 +585,9 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   bool success = 1;   /* be optimistic :) */
   float offset;
 
-  /* If we have entered the idle or landed state, stop whatever the high-level
+  /* If we have entered the idle, manual or landed state, stop whatever the high-level
    * commander is doing */
-  if (state == STATE_IDLE || state == STATE_LANDED) {
+  if (state == STATE_IDLE || state == STATE_LANDED || state == STATE_MANUAL_CONTROL) {
     crtpCommanderHighLevelStop();
     paramSetInt(paramIds.highLevelCommanderEnabled, 0);
   }
@@ -591,10 +597,10 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
     armingForceDisarm();
   }
 
-  /* If we have left the idle state and we did not go into the error state,
-   * turn the high-level controller on */
-  if ((oldState == STATE_IDLE || oldState == STATE_LANDED) &&
-      (state != STATE_ERROR && state != STATE_IDLE && state != STATE_LANDED)) {
+  /* If we have left the idle state and we did not go into the error or manual
+   * state, turn the high-level controller on */
+  if ((oldState == STATE_IDLE || oldState == STATE_LANDED || oldState == STATE_MANUAL_CONTROL) &&
+      (state != STATE_ERROR && state != STATE_IDLE && state != STATE_LANDED && state != STATE_MANUAL_CONTROL)) {
     paramSetInt(paramIds.highLevelCommanderEnabled, 1);
   }
 
@@ -670,6 +676,24 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
       LANDING_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
       /* relative = */ 0
     );
+  }
+
+  /* If we have entered the "manual" state, try to hold position until a new
+   * command arrives via CRTP */
+  if (state == STATE_MANUAL_CONTROL) {
+    /* Note that the high-level commander was already stopped above */
+    setpoint_t *setpoint = &setpointForManualMode;
+
+    memset(setpoint, 0, sizeof(setpointForManualMode));
+
+    setpoint->mode.x = modeVelocity;
+    setpoint->mode.y = modeVelocity;
+    setpoint->mode.z = modeVelocity;
+    setpoint->mode.roll = modeDisable;
+    setpoint->mode.pitch = modeDisable;
+    setpoint->mode.yaw = modeVelocity;
+
+    commanderSetSetpoint(setpoint, COMMANDER_PRIORITY_DISABLE);
   }
 
   /* If we have landed and the preflight checks were forced to pass, clear the
@@ -806,7 +830,8 @@ static bool shouldRunLightProgramInState(show_state_t state) {
     state == STATE_TAKEOFF ||
     state == STATE_PERFORMING_SHOW ||
     state == STATE_LANDING ||
-    state == STATE_LANDED
+    state == STATE_LANDED ||
+    state == STATE_MANUAL_CONTROL
   );
 }
 
