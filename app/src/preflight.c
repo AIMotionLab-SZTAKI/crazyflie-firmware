@@ -311,6 +311,7 @@ static preflight_check_result_t testKalmanFilter() {
   static uint16_t writeIndex;
   static uint8_t failureCounter = 0;
   static bool initialized = 0;
+  static bool convergedAtLeastOnce = 0;
 
   uint16_t i, dim, count;
   float minValue, maxValue;
@@ -322,6 +323,7 @@ static preflight_check_result_t testKalmanFilter() {
 
     kalmanFilterResetRequested = 0;
     failureCounter = 0;
+    convergedAtLeastOnce = 0;
     initialized = 0;  /* to clear the variance log */
   }
 
@@ -367,6 +369,14 @@ static preflight_check_result_t testKalmanFilter() {
       break;
     }
 
+    /* If we have passed the test at least once, and we are using Lighthouse,
+     * and the maxValue is not too large, exit here because there are occasional
+     * spikes in the variance with Lighthouse and we don't want that to influence
+     * the result */
+    if (PREFLIGHT_MIN_LH_BS_COUNT > 0 && convergedAtLeastOnce && maxValue < 10 * KALMAN_VARIANCE_THRESHOLD) {
+      continue;
+    }
+    
     if ((maxValue - minValue) > KALMAN_VARIANCE_THRESHOLD) {
       /* Difference too large. If the trend is increasing, fail here */
       if (writeIndex < KALMAN_VARIANCE_LOG_LENGTH - 1) {
@@ -398,6 +408,12 @@ static preflight_check_result_t testKalmanFilter() {
     }
   } else {
     failureCounter = 0;
+  }
+
+  /* If we have passed the test, remember that we have passed at least once
+   * so we can take this into account when using Lighthouse */
+  if (result == preflightResultPass) {
+    convergedAtLeastOnce = true;
   }
 
   return result;
