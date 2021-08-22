@@ -382,10 +382,16 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_PERFORMING_SHOW:
       if (crtpCommanderHighLevelIsTrajectoryFinished()) {
         /* show finished, let's land */
-        setState(STATE_LANDING);
+        /* HACK HACK HACK In Nina's show, drive the drone to the manual state
+         * if the group mask has the 7th (MSB) bit set */
+        if (crtpCommanderHighLevelMatchesGroupMask(1 << 7)) {
+          setState(STATE_MANUAL_CONTROL);
+        } else {
+          setState(STATE_LANDING);
+        }
       } else if (crtpCommanderHighLevelIsStopped()) {
-        /* high-level commander was stopped, switch to loitering? */
-        /* TODO(ntamas) */
+        /* high-level commander was stopped, switch to manual control? */
+        setState(STATE_MANUAL_CONTROL);
       }
       break;
 
@@ -415,6 +421,13 @@ static void droneShowTimer(xTimerHandle timer) {
       if (getSecondsSinceLastStateSwitch() > 30) {
         setState(STATE_IDLE);
       }
+      break;
+
+    case STATE_MANUAL_CONTROL:
+      /* Repeatedly send a position hold setpoint with low priority so we stay
+       * in the air if the user does not intervene but still allow the user to
+       * control the drone manually with CRTP or an external transmitter */
+      commanderSetSetpoint(&setpointForManualMode, COMMANDER_PRIORITY_DISABLE);
       break;
 
     default:

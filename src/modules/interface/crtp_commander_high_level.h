@@ -245,4 +245,9 @@ bool crtpCommanderHighLevelReadTrajectory(const uint32_t offset, const uint32_t 
  */
 bool crtpCommanderHighLevelIsTrajectoryFinished();
 
+/**
+ * @brief Query whether the drone is in at least one of the groups that match the given group mask.
+ */
+bool crtpCommanderHighLevelMatchesGroupMask(uint8_t g);
+
 #endif /* CRTP_COMMANDER_HIGH_LEVEL_H_ */

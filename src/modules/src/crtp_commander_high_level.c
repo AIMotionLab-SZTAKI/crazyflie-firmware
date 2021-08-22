@@ -251,6 +251,10 @@ bool isInGroup(uint8_t g) {
   return g == ALL_GROUPS || (g & group_mask) != 0;
 }
 
+bool crtpCommanderHighLevelMatchesGroupMask(uint8_t g) {
+  return g == ALL_GROUPS || (g & group_mask) != 0;
+}
+
 void crtpCommanderHighLevelInit(void)
 {
   if (isInit) {
