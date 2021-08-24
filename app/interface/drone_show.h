@@ -25,8 +25,9 @@ typedef enum {
   STATE_EXHAUSTED,
   STATE_ERROR,
 
-  /* Manual intervention */
+  /* Additional non-error states that are not hit during the normal show flow */
   STATE_MANUAL_CONTROL,
+  STATE_POSITION_HOLD,
 
   /* Sentinel marker so we know how many states we have */
   NUM_STATES

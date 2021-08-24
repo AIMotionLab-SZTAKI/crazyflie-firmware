@@ -50,6 +50,7 @@ static const char* stateMessages[NUM_STATES] = {
   "Unrecoverable error."
 
   "Manual control.",
+  "Position hold."
 };
 #endif
 
@@ -201,7 +202,9 @@ bool droneShowIsProbablyAirborne(void) {
     state == STATE_TAKEOFF ||
     state == STATE_PERFORMING_SHOW ||
     state == STATE_LANDING ||
-    state == STATE_LANDING_LOW_BATTERY
+    state == STATE_LANDING_LOW_BATTERY ||
+    state == STATE_MANUAL_CONTROL ||
+    state == STATE_POSITION_HOLD
   );
 }
 
@@ -382,14 +385,14 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_PERFORMING_SHOW:
       if (crtpCommanderHighLevelIsTrajectoryFinished()) {
         /* show finished, let's land */
-        /* HACK HACK HACK In Nina's show, drive the drone to the manual state
+        /* HACK HACK HACK In Nina's show, drive the drone to position hold
          * if the group mask has the 7th (MSB) bit set */
         if (crtpCommanderHighLevelMatchesGroupMask(1 << 7)) {
-          setState(STATE_MANUAL_CONTROL);
+          setState(STATE_POSITION_HOLD);
         } else {
           setState(STATE_LANDING);
         }
-      } else if (crtpCommanderHighLevelIsStopped()) {
+      } else if (!paramGetInt(paramIds.highLevelCommanderEnabled)) {
         /* high-level commander was stopped, switch to manual control? */
         setState(STATE_MANUAL_CONTROL);
       }
@@ -428,6 +431,11 @@ static void droneShowTimer(xTimerHandle timer) {
        * in the air if the user does not intervene but still allow the user to
        * control the drone manually with CRTP or an external transmitter */
       commanderSetSetpoint(&setpointForManualMode, COMMANDER_PRIORITY_DISABLE);
+      break;
+
+    case STATE_POSITION_HOLD:
+      /* Nothing to do; we gave a high-level "go to" command when we entered the
+       * state and this is still valid */
       break;
 
     default:
@@ -694,7 +702,8 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
   /* If we have entered the "manual" state, try to hold position until a new
    * command arrives via CRTP */
   if (state == STATE_MANUAL_CONTROL) {
-    /* Note that the high-level commander was already stopped above */
+    /* Note that the high-level commander was already stopped above so we need
+     * to rely on the lower-level setpoint commander */
     setpoint_t *setpoint = &setpointForManualMode;
 
     memset(setpoint, 0, sizeof(setpointForManualMode));
@@ -707,6 +716,19 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
     setpoint->mode.yaw = modeVelocity;
 
     commanderSetSetpoint(setpoint, COMMANDER_PRIORITY_DISABLE);
+  }
+
+  /* If we have entered the high-level "position hold" state, try to hold
+   * position with the high-level commander */
+  if (state == STATE_POSITION_HOLD) {
+    crtpCommanderHighLevelGoTo(
+      /* x = */ 0.0f,
+      /* y = */ 0.0f,
+      /* z = */ 0.0f,
+      /* yaw = */ 0.0f,
+      /* duration = */ 1.0f,
+      /* relative = */ true
+    );
   }
 
   /* If we have landed and the preflight checks were forced to pass, clear the
@@ -844,7 +866,8 @@ static bool shouldRunLightProgramInState(show_state_t state) {
     state == STATE_PERFORMING_SHOW ||
     state == STATE_LANDING ||
     state == STATE_LANDED ||
-    state == STATE_MANUAL_CONTROL
+    state == STATE_MANUAL_CONTROL ||
+    state == STATE_POSITION_HOLD
   );
 }
 
