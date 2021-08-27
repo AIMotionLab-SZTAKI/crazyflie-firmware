@@ -139,6 +139,7 @@ static uint64_t getUsecTimestampForLightPatterns();
 static bool hasStartTimePassed();
 static bool hasTakeoffTimePassed();
 static bool isErrorState(show_state_t state);
+static bool isGcsControlledState(show_state_t state);
 static bool isLandingState(show_state_t state);
 static bool isStateOnGround(show_state_t state);
 static bool onEnteredState(show_state_t state, show_state_t oldState);
@@ -574,6 +575,14 @@ static bool isErrorState(show_state_t state) {
 }
 
 /**
+ * Returns whether the given state means that the drone is (should be) controlled
+ * by the operator from the GCS.
+ */
+static bool isGcsControlledState(show_state_t state) {
+  return state == STATE_MANUAL_CONTROL || state == STATE_POSITION_HOLD;
+}
+
+/**
  * Returns whether the given state means that the drone is currently attempting
  * to land.
  */
@@ -593,6 +602,7 @@ static bool isStateOnGround(show_state_t state) {
   return (
     state != STATE_TAKEOFF &&
     state != STATE_PERFORMING_SHOW &&
+    !isGcsControlledState(state) &&
     !isLandingState(state)
   );
 }
