@@ -264,6 +264,12 @@ void positionControllerResetAllPID()
   pidReset(&this.pidVZ.pid);
 }
 
+void positionControllerResetAllfilters() {
+  filterReset(&this.pidVX.pid, POSITION_RATE, POSITION_LPF_CUTOFF_FREQ, POSITION_LPF_ENABLE);
+  filterReset(&this.pidVY.pid, POSITION_RATE, POSITION_LPF_CUTOFF_FREQ, POSITION_LPF_ENABLE);
+  filterReset(&this.pidVZ.pid, POSITION_RATE, POSITION_LPF_CUTOFF_FREQ, POSITION_LPF_ENABLE);
+}
+
 LOG_GROUP_START(posCtl)
 
 LOG_ADD(LOG_FLOAT, targetVX, &this.pidVX.pid.desired)
