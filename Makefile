@@ -172,10 +172,11 @@ PROJ_OBJ += range.o app_handler.o static_mem.o app_channel.o
 PROJ_OBJ += eventtrigger.o supervisor.o
 
 # Stabilizer modules
+POSITION_CONTROLLER ?= pid
 PROJ_OBJ += commander.o crtp_commander.o crtp_commander_rpyt.o
 PROJ_OBJ += crtp_commander_generic.o crtp_localization_service.o peer_localization.o
 PROJ_OBJ += attitude_pid_controller.o sensfusion6.o stabilizer.o
-PROJ_OBJ += position_estimator_altitude.o position_controller_sqrt.o position_controller_indi.o
+PROJ_OBJ += position_estimator_altitude.o position_controller_$(POSITION_CONTROLLER).o position_controller_indi.o
 PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller.o controller_pid.o controller_mellinger.o controller_indi.o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o

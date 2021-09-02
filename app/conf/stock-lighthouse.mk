@@ -4,5 +4,7 @@
 # is 35 grams
 CF_MODEL_MASS=0.035f
 
-# Use Lighthouse positioning
+# Use Lighthouse positioning and sqrt position controller
 CF_MODEL_POSITIONING=lighthouse
+POSITION_CONTROLLER=sqrt
+
