@@ -112,6 +112,12 @@ static float startOfTrajectoryRelativeToStartTime;
  */
 static float landingHeight = 0.0f;
 
+/**
+ * Height where the Crazyflie should attempt landing to in a low battery
+ * condition, in meters.
+ */
+static float landingHeightForLowBattery = 0.0f;
+
 static uint8_t lastColor[] = {0x00, 0x00, 0x00};
 static xSemaphoreHandle pendingCommandsSemaphore;
 static uint8_t pendingCommands;
@@ -703,7 +709,9 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
     state == STATE_LANDING || state == STATE_LANDING_LOW_BATTERY
   )) {
     crtpCommanderHighLevelLandWithVelocity(
-      landingHeight,
+      state == STATE_LANDING_LOW_BATTERY
+        ? landingHeightForLowBattery
+        : landingHeight,
       LANDING_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
       /* relative = */ 0
     );
@@ -1016,4 +1024,5 @@ PARAM_ADD(PARAM_UINT8, enabled, &isEnabled)
 PARAM_ADD(PARAM_UINT8, testing, &isTesting)
 PARAM_ADD(PARAM_FLOAT, takeoffTime, &startOfTrajectoryRelativeToStartTime)
 PARAM_ADD(PARAM_FLOAT, landingHeight, &landingHeight)
+PARAM_ADD(PARAM_FLOAT, lowBatHeight, &landingHeightForLowBattery)
 PARAM_GROUP_STOP(show)
