@@ -7,10 +7,14 @@ import os
 fw_dir = "."
 include = [
     os.path.join(fw_dir, "src/modules/interface"),
+    os.path.join(fw_dir, "src/hal/interface"),
+    os.path.join(fw_dir, "src/utils/interface/lighthouse"),
 ]
 
 modules = [
-    # list firmware c-files here
+    "pptraj.c",
+    "pptraj_compressed.c",
+    "planner.c"
 ]
 fw_sources = [os.path.join(fw_dir, "src/modules/src", mod) for mod in modules]
 
@@ -20,6 +24,9 @@ cffirmware = Extension(
     sources=fw_sources + ["bin/cffirmware_wrap.c"],
     extra_compile_args=[
         "-O3",
+        # The following flags are also used for compiling the actual firmware
+        "-fno-strict-aliasing",
+        "-Wno-address-of-packed-member",
     ],
 )
 
