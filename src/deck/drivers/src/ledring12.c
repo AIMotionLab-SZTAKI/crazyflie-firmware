@@ -1032,6 +1032,15 @@ void ledring12Worker(void * data)
 
   effectsFct[current_effect](buffer, reset);
   overrideWithLightSignal(buffer);
+
+#ifdef LED_RING_REDUCE_BRIGHTNESS
+  for (uint8_t i = 0; i < NBR_LEDS; i++) {
+    for (uint8_t j = 0; j < 3; j++) {
+      buffer[i][j] = buffer[i][j] >> LED_RING_REDUCE_BRIGHTNESS;
+    }
+  }
+#endif
+
   ws2812Send(buffer, NBR_LEDS);
 }
 
