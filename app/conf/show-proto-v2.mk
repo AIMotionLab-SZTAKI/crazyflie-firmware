@@ -23,3 +23,8 @@ CFLAGS += -DDISABLE_CHARGER_DETECTION
 # Use smoother (less aggressive) takeoff as it is perfectly fine with Lighthouse
 # and it looks less scary with a larger drone
 CFLAGS += -DSHOW_SMOOTH_TAKEOFF
+
+# Reduce LED ring brightness because the motors and the LED ring together draw
+# too much power
+CFLAGS += -DLED_RING_REDUCE_BRIGHTNESS=2
+
