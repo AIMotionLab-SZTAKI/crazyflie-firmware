@@ -2,10 +2,11 @@
 
 # The Crazyflie model that we are building the firmware for. Possible values:
 #
-# stock: basic Crazyflie 2.1 with LED ring and UWB deck
-# stock-lighthouse: basic Crazyflie 2.1 with LED ring and Lighthouse deck
+# stock-uwb: basic Crazyflie 2.1 with LED ring and UWB deck
+# stock-lh: basic Crazyflie 2.1 with LED ring and Lighthouse deck
 # show-proto-v1: show drone prototype sent to us by Bitcraze in Dec 2020
-# show-proto-v2: Nina's show drone prototype with Lighthouse instead of UWB
+# show-proto-v2-uwb: Nina's show drone prototype with UWB
+# show-proto-v2-lh: Nina's show drone prototype with Lighthouse instead of UWB
 #
 # When adding a new model, do not forget to create the appropriate file in conf/
 

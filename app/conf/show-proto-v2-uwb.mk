@@ -5,7 +5,8 @@
 CF_MODEL_MASS=0.1f
 
 # Use Lighthouse positioning and the standard PID controller
-CF_MODEL_POSITIONING=lighthouse
+# CF_MODEL_POSITIONING=lighthouse
+CF_MODEL_POSITIONING=uwb
 
 # Configure ESC
 CFLAGS += -DENABLE_ONESHOT125
@@ -20,8 +21,8 @@ CFLAGS += -DDEFAULT_PROP_TEST_PWM_RATIO=10000
 # board (it always says that the charger is connected)
 CFLAGS += -DDISABLE_CHARGER_DETECTION
 
-# Use smoother (less aggressive) takeoff as it is perfectly fine with Lighthouse
-# and it looks less scary with a larger drone
+# Use smoother (less aggressive) takeoff as it is perfectly fine with this drone
+# and it looks less scary
 CFLAGS += -DSHOW_SMOOTH_TAKEOFF
 
 # Reduce LED ring brightness because the motors and the LED ring together draw

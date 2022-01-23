@@ -6,5 +6,5 @@ CF_MODEL_MASS=0.035f
 
 # Use UWB positioning and sqrt position controller
 CF_MODEL_POSITIONING=uwb
-POSITION_CONTROLLER=sqrt
+# POSITION_CONTROLLER=sqrt
 
