@@ -12,6 +12,7 @@
 
 #include "arming.h"
 #include "crtp_drone_show_service.h"
+#include "custom_params.h"
 #include "drone_show.h"
 #include "fence.h"
 #include "gcs_light_effects.h"
@@ -47,8 +48,6 @@ void appInit()
   fenceInit();
 
   STATIC_MEM_TASK_CREATE(appTask, appTask, "app", NULL, APP_PRIORITY);
-
-  isInit = true;
 }
 
 static bool appTest()
@@ -62,6 +61,8 @@ static bool appTest()
   pass &= lightProgramPlayerTest();
   pass &= droneShowSrvTest();
   pass &= droneShowTest();
+
+  pass &= droneShowApplyCustomParameters();
 
   return pass;
 }
@@ -90,4 +91,3 @@ static void appTask(void *param)
 void appMain() {
   DEBUG_PRINT("Drone show app started.\n");
 }
-

@@ -4,7 +4,8 @@
 # 35 grams
 CF_MODEL_MASS=0.035f
 
-# Use UWB positioning and sqrt position controller
+# Use UWB positioning
 CF_MODEL_POSITIONING=uwb
-# POSITION_CONTROLLER=sqrt
 
+# Use sqrt position controller
+POSITION_CONTROLLER=sqrt

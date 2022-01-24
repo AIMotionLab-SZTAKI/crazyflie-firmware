@@ -6,5 +6,6 @@ CF_MODEL_MASS=0.035f
 
 # Use Lighthouse positioning and sqrt position controller
 CF_MODEL_POSITIONING=lighthouse
-POSITION_CONTROLLER=sqrt
 
+# Use sqrt position controller
+POSITION_CONTROLLER=sqrt

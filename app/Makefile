@@ -10,7 +10,7 @@
 #
 # When adding a new model, do not forget to create the appropriate file in conf/
 
-CF_MODEL=stock
+CF_MODEL=stock-uwb
 
 ## Variables derived from the general app configuration ------------
 
@@ -41,6 +41,10 @@ CFLAGS += -DSHOW_MODE_SILENT
 # nodes are misconfigured (mixed TDoA3 and TDoA2 mode), but its effect is
 # negligible so we keep it off.
 # LPS_TDOA3_ENABLE=1
+
+## Add a compiler flag so we can detect which model we are working with from
+# the code.
+CFLAGS += -DCF_MODEL_$(shell echo $(CF_MODEL) | tr '[:lower:]-' '[:upper:]_')=1
 
 ## Weight of the Crazyflie + UWB + LED deck
 CFLAGS += -DCF_MASS=$(CF_MODEL_MASS)
@@ -78,8 +82,8 @@ VPATH += src/
 INCLUDES += -Iinterface/
 
 # Drone show module
-PROJ_OBJ += app.o arming.o crtp_drone_show_service.o drone_show.o fence.o \
-            gcs_light_effects.o light_program.o preflight.o
+PROJ_OBJ += app.o arming.o crtp_drone_show_service.o custom_params.o \
+            drone_show.o fence.o gcs_light_effects.o light_program.o preflight.o
 
 # LED light control library
 INCLUDES += -Ivendor/ledctrl/include
