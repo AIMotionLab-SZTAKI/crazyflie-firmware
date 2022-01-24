@@ -68,15 +68,15 @@ static float rLimit  = 20;
 static float pLimit  = 20;
 static float rpLimitOverhead = 1.10f;
 // Velocity maximums
-static float xVelMax = 1.0f;
-static float yVelMax = 1.0f;
+static float xVelMax = 2.0f;
+static float yVelMax = 2.0f;
 static float zVelMax  = 0.8f;
 static float velMaxOverhead = 1.10f;
 static const float thrustScale = 1000.0f;
 
 // Feedforward gains
-static float kFFx = 0.0; // feedforward gain for x direction [deg / m/s]
-static float kFFy = 0.0; // feedforward gain for y direction [deg / m/s]
+static float kFFx = 1.0; // feedforward gain for x direction [deg / m/s]
+static float kFFy = 1.0; // feedforward gain for y direction [deg / m/s]
 
 #define DT (float)(1.0f/POSITION_RATE)
 bool posFiltEnable = true;
