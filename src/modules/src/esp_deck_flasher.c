@@ -99,11 +99,7 @@ bool espDeckFlasherWrite(const uint32_t memAddr, const uint8_t writeLen, const u
   // send buffer if full
   const bool sendBufferFull = (sendBufferIndex == ESP_MTU);
   const bool lastPacket = (sequenceNumber == numberOfDataPackets - 1);
-  bool lastPacketFull;
-  if (lastPacket)
-  {
-    lastPacketFull = (sendBufferIndex == ESP_BITSTREAM_SIZE % ESP_MTU);
-  }
+  bool lastPacketFull = lastPacket && (sendBufferIndex == ESP_BITSTREAM_SIZE % ESP_MTU);
 
   if (sendBufferFull || (lastPacket && lastPacketFull))
   {
