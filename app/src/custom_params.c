@@ -62,8 +62,7 @@ static const customParamTableEntry_t params[] = {
 
 #ifdef DRONE_IS_BASED_ON_BOLT
   /* Larger Bolt-bases show drones are okay with a lower thrust base */
-  #error "Lo thrust base!"
-  { "posCtlPid", "thrustBase", 30000 }
+  { "posCtlPid", "thrustBase", 30000 },
 #endif
 
   NO_MORE_ENTRIES
