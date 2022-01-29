@@ -13,7 +13,6 @@
 [submodule "vendor/unity"]
 	path = vendor/unity
 	url = https://github.com/throwtheswitch/unity.git
-[submodule "vendor/ledctrl"]
-	path = app/vendor/ledctrl
-	url = git@git.collmot.com:collmot/ledctrl.git
-
+[submodule "app/vendor/libskybrush"]
+	path = app/vendor/libskybrush
+	url = https://github.com/skybrush-io/libskybrush.git

@@ -4,6 +4,9 @@
  * Copyright (C) 2022 CollMot Robotics. All rights reserved.
  */
 
+#define DEBUG_MODULE "PARAMS"
+
+#include "debug.h"
 #include "param_logic.h"
 
 #include "custom_params.h"
@@ -80,6 +83,9 @@ bool droneShowApplyCustomParameters(void) {
         paramSetFloat(paramId, entry->value);
       }
     } else if (!entry->optional) {
+      if (allValid) {
+        DEBUG_PRINT("Cannot set param %s.%s", entry->group, entry->name);
+      }
       allValid = false;
     }
   }

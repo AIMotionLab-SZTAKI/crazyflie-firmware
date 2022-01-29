@@ -11,8 +11,8 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-/* LedCtrl includes */
-#include <ledctrl/player.h>
+/* libskybrush includes */
+#include <skybrush/lights.h>
 
 #include "light_program.h"
 #include "mem.h"
@@ -50,7 +50,11 @@ static StaticSemaphore_t lockLightProgramBuffer;
 static struct lightProgramDescription* currentProgram;   // the light program that we are playing
 static uint64_t startedAt;         // timestamp when the current program started
 static float currentTimescale = 1; // timescale of the current program being played
-static lc_player_t ledCtrlPlayer;  // player objectthat plays LedCtrl light sequences
+
+static sb_light_program_t lightSequence;
+static bool lightSequenceInitialized = 0;
+
+static sb_light_player_t lightSequencePlayer;  // player object that plays Skybrush light sequences
 
 static uint8_t* startOfCurrentProgramInMemory();
 static uint32_t sizeOfCurrentProgramInMemory();
@@ -61,7 +65,7 @@ static uint8_t* timeToPointer(float t, uint8_t bytesPerFrame);
 static void evaluateBlack(float t, uint8_t* color);
 static void evaluateRGBAt(float t, uint8_t* color);
 static void evaluateRGB565At(float t, uint8_t* color);
-static void evaluateLedCtrlAt(float t, uint8_t* color);
+static void evaluateLightSequenceAt(float t, uint8_t* color);
 
 typedef void (*evaluator_t)(float, uint8_t*);
 static evaluator_t evaluator = evaluateBlack;
@@ -75,9 +79,15 @@ void lightProgramPlayerInit(void) {
 
   lockLightProgram = xSemaphoreCreateMutexStatic(&lockLightProgramBuffer);
 
-  lc_player_init(&ledCtrlPlayer);
-
-  isInit = true;
+  if (sb_light_program_init_empty(&lightSequence)) {
+    isInit = false;
+  } else if (sb_light_player_init(&lightSequencePlayer, &lightSequence)) {
+    sb_light_program_destroy(&lightSequence);
+    isInit = false;
+  } else {
+    lightSequenceInitialized = true;
+    isInit = true;
+  }
 }
 
 bool lightProgramPlayerTest(void) {
@@ -169,12 +179,14 @@ static void evaluateRGB565At(float scaledT, uint8_t* color) {
   }
 }
 
-static void evaluateLedCtrlAt(float scaledT, uint8_t* color) {
-  lc_rgb_color_t lc_rgb_color = lc_player_get_color_at(&ledCtrlPlayer, scaledT * 1000);
+static void evaluateLightSequenceAt(float scaledT, uint8_t* color) {
+  sb_rgb_color_t rgb_color = lightSequenceInitialized
+    ? sb_light_player_get_color_at(&lightSequencePlayer, scaledT * 1000)
+    : SB_COLOR_BLACK;
 
-  color[0] = lc_rgb_color.red;
-  color[1] = lc_rgb_color.green;
-  color[2] = lc_rgb_color.blue;
+  color[0] = rgb_color.red;
+  color[1] = rgb_color.green;
+  color[2] = rgb_color.blue;
 }
 
 static bool handleMemRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer) {
@@ -247,13 +259,24 @@ int lightProgramPlayerSchedulePlayFrom(uint64_t timestamp, uint8_t programId, fl
         DEBUG_PRINT("Program too large\n");
         result = ENOEXEC;
       } else {
-        evaluator = evaluateLedCtrlAt;
-        if (lc_player_load_from_memory(
-          &ledCtrlPlayer, startOfCurrentProgramInMemory(),
+        evaluator = evaluateLightSequenceAt;
+        if (lightSequenceInitialized) {
+          sb_light_player_destroy(&lightSequencePlayer);
+          sb_light_program_destroy(&lightSequence);
+          lightSequenceInitialized = false;
+        }
+        if (sb_light_program_init_from_buffer(
+          &lightSequence, startOfCurrentProgramInMemory(),
           sizeOfCurrentProgramInMemory()
         )) {
           /* something happened while loading the program */
           result = ENOEXEC;
+        } else if (sb_light_player_init(&lightSequencePlayer, &lightSequence)) {
+          /* something happened while initializing the player */
+          sb_light_program_destroy(&lightSequence);
+          result = ENOEXEC;
+        } else {
+          lightSequenceInitialized = true;
         }
       }
       currentProgram = oldProgram;

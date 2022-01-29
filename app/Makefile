@@ -86,8 +86,8 @@ PROJ_OBJ += app.o arming.o crtp_drone_show_service.o custom_params.o \
             drone_show.o fence.o gcs_light_effects.o light_program.o preflight.o
 
 # LED light control library
-INCLUDES += -Ivendor/ledctrl/include
-PROJ_OBJ += libledctrl.a
+INCLUDES += -Ivendor/libskybrush/include
+PROJ_OBJ += libskybrush.a
 
 # Make sure that the program name includes the Crazyflie model
 PROG=cf2-skybrush-$(CF_MODEL)
@@ -102,7 +102,7 @@ LD = $(CROSS_COMPILE)g++
 
 # Add new targets here in order not to override the 'all' target and provide
 # a new default target accidentally
-libledctrl.a:
-	+$(MAKE) -C tools/make/ledctrl/ CRAZYFLIE_BASE=$(abspath $(CRAZYFLIE_BASE)) PROJ_ROOT=$(CURDIR) V=$(V) CROSS_COMPILE=$(CROSS_COMPILE)
+libskybrush.a:
+	+$(MAKE) -C tools/make/libskybrush/ CRAZYFLIE_BASE=$(abspath $(CRAZYFLIE_BASE)) PROJ_ROOT=$(CURDIR) V=$(V) CROSS_COMPILE=$(CROSS_COMPILE)
 
 

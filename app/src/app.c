@@ -48,6 +48,8 @@ void appInit()
   fenceInit();
 
   STATIC_MEM_TASK_CREATE(appTask, appTask, "app", NULL, APP_PRIORITY);
+
+  isInit = true;
 }
 
 static bool appTest()
