@@ -392,13 +392,7 @@ static void droneShowTimer(xTimerHandle timer) {
     case STATE_PERFORMING_SHOW:
       if (crtpCommanderHighLevelIsTrajectoryFinished()) {
         /* show finished, let's land */
-        /* HACK HACK HACK In Nina's show, drive the drone to position hold
-         * if the group mask has the 7th (MSB) bit set */
-        if (crtpCommanderHighLevelMatchesGroupMask(1 << 7)) {
-          setState(STATE_POSITION_HOLD);
-        } else {
-          setState(STATE_LANDING);
-        }
+        setState(STATE_LANDING);
       } else if (!paramGetInt(paramIds.highLevelCommanderEnabled)) {
         /* high-level commander was stopped, switch to manual control? */
         setState(STATE_MANUAL_CONTROL);
