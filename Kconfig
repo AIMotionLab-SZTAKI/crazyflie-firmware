@@ -31,6 +31,15 @@ config DEBUG_ENABLE_LED_MORSE
       If enabled makes it possible to define LED sequences in form of the DOT,
       DASH, GAP, LETTER_GAP and WORD_GAP parts of Morse code.
 
+config DEBUG_PRINT_ON_UART1
+    bool "Switch DEBUG_PRINT to UART1"
+    default n
+    help
+      Switch output of DEBUG_PRINT from radio to UART1 with 115200 baudrate.
+      Note! This will interfere with several expansion decks, see the expansion
+      deck documentation on https://www.bitcraze.io/ for more information about
+      pin allocation.
+
 endmenu
 
 menu "Platform configuration"
