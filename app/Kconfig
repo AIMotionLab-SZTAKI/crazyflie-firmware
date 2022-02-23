@@ -1,0 +1,10 @@
+menu "Skybrush app configuration"
+
+config FOOBAR
+    bool "Foobar"
+    default n
+    help
+      Foo bar baz
+
+endmenu
+

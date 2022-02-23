@@ -1,0 +1,9 @@
+obj-y += app.o
+obj-y += arming.o
+obj-y += crtp_drone_show_service.o
+obj-y += custom_params.o
+obj-y += drone_show.o
+obj-y += fence.o
+obj-y += gcs_light_effects.o
+obj-y += light_program.o
+obj-y += preflight.o

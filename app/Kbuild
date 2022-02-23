@@ -1,0 +1,6 @@
+subdir-ccflags-y += -I$(srctree)/app/interface/
+subdir-ccflags-y += -I$(srctree)/app/vendor/libskybrush/include/
+
+obj-y += src/
+obj-y += vendor/
+

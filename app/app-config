@@ -1,0 +1,24 @@
+# Skybrush drone show firmware configuration for the stock Crazyflie,
+# assuming UWB positioning
+
+#
+# Platform configuration
+#
+CONFIG_PLATFORM_CF2=y
+
+#
+# App layer configuration
+#
+CONFIG_APP_ENABLE=y
+CONFIG_APP_STACKSIZE=16
+CONFIG_APP_PRIORITY=0
+
+#
+# Expansion deck configuration
+#
+CONFIG_DECK_LOCO_FULL_TX_POWER=y
+
+#
+# Skybrush app configuration
+#
+# CONFIG_FOOBAR is not set
