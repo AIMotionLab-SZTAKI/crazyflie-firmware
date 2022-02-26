@@ -1,6 +1,8 @@
 #include <float.h>
 #include <math.h>
 
+#include "autoconf.h"
+
 #include "FreeRTOS.h"
 #include "timers.h"
 
@@ -21,8 +23,30 @@
 #define DEBUG_MODULE "PREFLT"
 #include "debug.h"
 
+#ifdef CONFIG_PREFLIGHT_ENABLE_BATTERY_VOLTAGE_CHECK
+#  define PREFLIGHT_MIN_BATTERY_VOLTAGE (CONFIG_PREFLIGHT_MIN_BATTERY_VOLTAGE / 10.0f)
+#else
+#  define PREFLIGHT_MIN_BATTERY_VOLTAGE 0.0f
+#endif
+
+#ifdef CONFIG_PREFLIGHT_ENABLE_POSITIONING_CHECK
+#  ifdef CONFIG_SHOW_POSITIONING_UWB
+#    define PREFLIGHT_MIN_LOCO_ANCHOR_COUNT CONFIG_PREFLIGHT_MIN_LOCO_ANCHOR_COUNT
+#    define PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT CONFIG_PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT
+#  endif
+#  ifdef CONFIG_SHOW_POSITIONING_LIGHTHOUSE
+#    define PREFLIGHT_MIN_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_LH_BS_COUNT
+#    define PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
+#  endif
+#endif
+
+#ifdef CONFIG_PREFLIGHT_ENABLE_TRAJECTORY_CHECK
+#  define PREFLIGHT_MIN_TRAJECTORIES CONFIG_PREFLIGHT_MIN_TRAJECTORIES
+#  define PREFLIGHT_MIN_LIGHT_PROGRAMS CONFIG_PREFLIGHT_MIN_LIGHT_PROGRAMS
+#endif
+
 #ifndef PREFLIGHT_MIN_BATTERY_VOLTAGE
-#  define PREFLIGHT_MIN_BATTERY_VOLTAGE 3.8f
+#  define PREFLIGHT_MIN_BATTERY_VOLTAGE 0.0f
 #endif
 
 #ifndef PREFLIGHT_MIN_LH_BS_COUNT
@@ -57,7 +81,11 @@
  * between LH base stations occasionally creates a "spike" in the variance
  * plot. The spike typically has a duration < 1s and a height that sometimes
  * reaches 0.001f, making the Kalman preflight test fail temporarily */
-#define KALMAN_VARIANCE_THRESHOLD 0.002f
+#ifdef CONFIG_SHOW_POSITIONING_LIGHTHOUSE
+#  define KALMAN_VARIANCE_THRESHOLD 0.002f
+#else
+#  define KALMAN_VARIANCE_THRESHOLD 0.001f
+#endif
 
 static StaticTimer_t timerBuffer;
 

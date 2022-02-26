@@ -1,3 +1,4 @@
+subdir-ccflags-y += -DNDEBUG
 subdir-ccflags-y += -I$(srctree)/app/vendor/libskybrush/include/
 
 obj-y += libskybrush/src/lights/colors.o

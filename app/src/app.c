@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 
+#include "autoconf.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -19,13 +21,7 @@
 #include "light_program.h"
 #include "preflight.h"
 
-#ifndef DRONE_SHOW_APP_STACKSIZE
 #define DRONE_SHOW_APP_STACKSIZE 300
-#endif
-
-#ifndef APP_PRIORITY
-#define APP_PRIORITY 0
-#endif
 
 static bool isInit = false;
 
@@ -47,7 +43,7 @@ void appInit()
   // The fence module also has to be initialized here for the same reasons
   fenceInit();
 
-  STATIC_MEM_TASK_CREATE(appTask, appTask, "app", NULL, APP_PRIORITY);
+  STATIC_MEM_TASK_CREATE(appTask, appTask, "app", NULL, CONFIG_APP_PRIORITY);
 
   isInit = true;
 }

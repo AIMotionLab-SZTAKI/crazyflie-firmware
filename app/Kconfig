@@ -1,10 +1,108 @@
 menu "Skybrush app configuration"
 
-config FOOBAR
-    bool "Foobar"
+choice
+    prompt "Positioning system"
+    default SHOW_POSITIONING_UWB
+
+    config SHOW_POSITIONING_UWB
+        bool "UWB"
+
+    config SHOW_POSITIONING_LIGHTHOUSE
+        bool "Lighthouse"
+
+endchoice
+
+menu "Preflight checks"
+
+config PREFLIGHT_ENABLE_BATTERY_VOLTAGE_CHECK
+    bool "Check the battery voltage"
+    default y
+
+config PREFLIGHT_MIN_BATTERY_VOLTAGE
+    int "Minimum battery voltage, in 1/10 volts"
+    default 38
+    depends on PREFLIGHT_ENABLE_BATTERY_VOLTAGE_CHECK
+
+config PREFLIGHT_ENABLE_TRAJECTORY_CHECK
+    bool "Check the uploaded number of trajectories and light programs"
+    default y
+
+config PREFLIGHT_MIN_TRAJECTORIES
+    int "Minimum number of trajectories"
+    default 1
+    depends on PREFLIGHT_ENABLE_TRAJECTORY_CHECK
+    range 0 8
+
+config PREFLIGHT_MIN_LIGHT_PROGRAMS
+    int "Minimum number of light programs"
+    default 1
+    depends on PREFLIGHT_ENABLE_TRAJECTORY_CHECK
+    range 0 8
+
+config PREFLIGHT_ENABLE_POSITIONING_CHECK
+    bool "Check the positioning system"
+    default y
+
+config PREFLIGHT_MIN_LOCO_ANCHOR_COUNT
+    int "Minimum number of UWB (Loco) anchors"
+    depends on SHOW_POSITIONING_UWB && PREFLIGHT_ENABLE_POSITIONING_CHECK
+    default 6
+    range 1 8
+    help
+        Minimum number of UWB (Loco) anchors for which the drone needs to have
+        position information before takeoff.
+
+config PREFLIGHT_MIN_ACTIVE_LOCO_ANCHOR_COUNT
+    int "Minimum number of active UWB (Loco) anchors"
+    depends on SHOW_POSITIONING_UWB && PREFLIGHT_ENABLE_POSITIONING_CHECK
+    default 6
+    range 1 8
+    help
+        Minimum number of UWB (Loco) anchors that the drone needs to consider
+        as actively transmitting before takeoff.
+
+config PREFLIGHT_MIN_LH_BS_COUNT
+    int "Minimum number of Lighthouse base stations"
+    depends on SHOW_POSITIONING_LIGHTHOUSE && PREFLIGHT_ENABLE_POSITIONING_CHECK
+    default 2
+    range 1 8
+    help
+        Minimum number of Lighthouse base stations for which the drone needs to
+        have geometry information before takeoff.
+
+config PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
+    int "Minimum number of active Lighthouse base stations"
+    depends on SHOW_POSITIONING_LIGHTHOUSE && PREFLIGHT_ENABLE_POSITIONING_CHECK
+    default 1
+    range 1 8
+    help
+        Minimum number of Lighthouse base stations from which the drone must be
+        receiving light beams before takeoff.
+
+endmenu
+
+config SHOW_TAKEOFF_HEIGHT_CM
+    int "Takeoff height, in centimeters"
+    default 100
+    help
+        Altitude that the drone should take off to at the start of the show,
+        assuming that the ground is at Z=0.
+
+config SHOW_SMOOTH_TAKEOFF
+    bool "Use smooth takeoff"
     default n
     help
-      Foo bar baz
+        Use a longer duration for the takeoff. This should be enabled for
+        larger builds with stronger motors to make the takeoff less scary.
+        It should be off for the stock drone with UWB as we want to get
+        away from the ground as fast as possible with UWB.
+
+config SHOW_MODE_SILENT
+    bool "Disable console messages during show mode"
+    default y
+    help
+        Prevents the drone from sending console messages related to the show
+        subsystem of the firmware.
 
 endmenu
 

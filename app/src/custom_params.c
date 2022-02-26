@@ -6,6 +6,8 @@
 
 #define DEBUG_MODULE "PARAMS"
 
+#include "autoconf.h"
+
 #include "debug.h"
 #include "param_logic.h"
 
@@ -21,13 +23,9 @@ typedef struct {
 #define NO_MORE_ENTRIES { 0, 0, 0 }
 #define OPTIONAL 1
 
-#if defined(CF_MODEL_SHOW_PROTO_V1) || defined(CF_MODEL_SHOW_PROTO_V2_LH) || defined(CF_MODEL_SHOW_PROTO_V2_UWB)
-#  define DRONE_IS_BASED_ON_BOLT
-#endif
-
 static const customParamTableEntry_t params[] = {
   /* Attitude rate controller PID tuning */
-#ifdef DRONE_IS_BASED_ON_BOLT
+#ifdef PLATFORM_BOLT
   { "pid_rate", "roll_kp",   70 },
   { "pid_rate", "roll_ki",  200 },
   { "pid_rate", "roll_kd",    2 },
@@ -44,7 +42,7 @@ static const customParamTableEntry_t params[] = {
 #endif
 
   /* Attitude controller PID tuning */
-#ifdef DRONE_IS_BASED_ON_BOLT
+#ifdef PLATFORM_BOLT
   { "pid_attitude", "roll_kp",  7 },
   { "pid_attitude", "pitch_kp", 7 },
   { "pid_attitude", "roll_ki",  3 },
@@ -63,7 +61,7 @@ static const customParamTableEntry_t params[] = {
   { "posCtlPid", "vxKFF", 1, OPTIONAL },
   { "posCtlPid", "vyKFF", 1, OPTIONAL },
 
-#ifdef DRONE_IS_BASED_ON_BOLT
+#ifdef PLATFORM_BOLT
   /* Larger Bolt-bases show drones are okay with a lower thrust base */
   { "posCtlPid", "thrustBase", 30000 },
 #endif

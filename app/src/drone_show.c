@@ -1,5 +1,7 @@
 #include <math.h>
 
+#include "autoconf.h"
+
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "timers.h"
@@ -18,7 +20,7 @@
 #include "stabilizer.h"
 #include "supervisor.h"
 
-#ifdef SHOW_MODE_SILENT
+#ifdef CONFIG_SHOW_MODE_SILENT
 #  define DEBUG_PRINT(fmt, ...) /* nothing */
 #else
 #  define DEBUG_MODULE "SHOW"
@@ -33,7 +35,7 @@
 #define CMD_STOP 4
 #define CMD_RESTART 8
 
-#ifndef SHOW_MODE_SILENT
+#ifndef CONFIG_SHOW_MODE_SILENT
 static const char* stateMessages[NUM_STATES] = {
   "Initializing.",
   "Deactivated.",
@@ -54,9 +56,7 @@ static const char* stateMessages[NUM_STATES] = {
 };
 #endif
 
-#ifndef SHOW_TAKEOFF_HEIGHT
-#  define SHOW_TAKEOFF_HEIGHT 1.0f
-#endif
+#define SHOW_TAKEOFF_HEIGHT (CONFIG_SHOW_TAKEOFF_HEIGHT_CM / 100.0f)
 
 /* 20fps because we are now driving the LED light from the loop */
 #define LOOP_INTERVAL_MSEC 50
@@ -75,7 +75,7 @@ static const char* stateMessages[NUM_STATES] = {
  * out properly; in particular, there should be two configuration #defines, one
  * for the takeoff height and one for the takeoff velocity, everything else
  * should be derived from that. Takeoff duration should not be a #define macro */
-#ifdef SHOW_SMOOTH_TAKEOFF
+#ifdef CONFIG_SHOW_SMOOTH_TAKEOFF
 #  define TAKEOFF_CORRECTION_FACTOR (2 + 3.0f / 16)
 #else
 #  define TAKEOFF_CORRECTION_FACTOR 1.0f

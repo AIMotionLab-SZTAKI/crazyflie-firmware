@@ -1,5 +1,7 @@
 #include "FreeRTOS.h"   /* bool is defined there */
 
+#include "autoconf.h"
+
 #include "arming.h"
 #include "param.h"
 #include "system.h"
@@ -42,7 +44,7 @@ void armAutomaticallyIfNeeded(void) {
 }
 
 bool armingShouldDisarmAutomaticallyAfterLanding(void) {
-#ifdef START_DISARMED
+#ifdef CONFIG_MOTORS_START_DISARMED
   return true;
 #else
   return false;

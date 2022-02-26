@@ -14,14 +14,8 @@
 #
 CRAZYFLIE_BASE := ..
 
-#
-# We override the default OOT_CONFIG here, we could also name our config
-# to oot-config and that would be the default.
-#
-OOT_CONFIG := $(PWD)/app-config
-
 include $(CRAZYFLIE_BASE)/tools/make/oot.mk
 
 menuconfig:
-	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) KCONFIG_ALLCONFIG=$(OOT_CONFIG) menuconfig
+	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) menuconfig
 
