@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+SCRIPT_ROOT="`dirname $0`"
+
+if [ "x$VARIANTS" = x ]; then
+    VARIANTS=`find "${SCRIPT_ROOT}/conf" -name '*.cfg' -exec basename {} .cfg \; | grep -v common | sort`
+fi
+
+cd "${SCRIPT_ROOT}"
+
+for VARIANT in $VARIANTS; do
+    make clean
+    cp conf/common.cfg app-config
+    echo "" >>app-config
+    cat conf/${VARIANT}.cfg >>app-config
+    make -j 12
+    cp build/*.bin cf2-skybrush-${VARIANT}.bin
+done
+
