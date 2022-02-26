@@ -92,6 +92,10 @@ ifneq ($(CONFIG_DECK_LOCO_2D_POSITION_HEIGHT),)
 unquoted = $(patsubst "%",%,$(CONFIG_DECK_LOCO_2D_POSITION_HEIGHT))
 ARCH_CFLAGS += -DDECK_LOCO_2D_POSITION_HEIGHT=$(unquoted)
 endif
+unquoted = $(patsubst "%",%,$(CONFIG_PM_BAT_LOW_VOLTAGE))
+ARCH_CFLAGS += -DPM_BAT_LOW_VOLTAGE=$(unquoted)f
+unquoted = $(patsubst "%",%,$(CONFIG_PM_BAT_CRITICAL_LOW_VOLTAGE))
+ARCH_CFLAGS += -DPM_BAT_CRITICAL_LOW_VOLTAGE=$(unquoted)f
 
 ifeq ($(CONFIG_PLATFORM_TAG),y)
 PLATFORM = tag
@@ -161,7 +165,8 @@ flash_verify:
                  -c "verify_image $(PROG).bin $(LOAD_ADDRESS) bin" -c "reset run" -c shutdown
 
 flash_dfu:
-	$(DFU_UTIL) -a 0 -D $(PROG).dfu
+	$(PYTHON) tools/make/usb-bootloader.py
+	$(DFU_UTIL) -d 0483:df11 -a 0 -D $(PROG).dfu -s :leave
 
 #STM utility targets
 halt:
