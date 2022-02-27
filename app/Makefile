@@ -15,12 +15,31 @@
 CRAZYFLIE_BASE := ..
 
 #
-# We override the default OOT_CONFIG here, we could also name our config
-# to oot-config and that would be the default.
+# We tell the firmware that this is an "Out-of-Tree" build so look for
+# kbuild files in this directory.
 #
-OOT_CONFIG := $(PWD)/app-config
+OOT ?= $(PWD)
 
-include $(CRAZYFLIE_BASE)/tools/make/oot.mk
+#
+# We need to tell the firmware where to find extra config options for this
+# build.
+#
+OOT_CONFIG := $(OOT)/app-config
+
+OOT_ARGS ?= -C $(CRAZYFLIE_BASE) OOT=$(OOT) EXTRA_CFLAGS=$(EXTRA_CFLAGS)
+
+.PHONY: all clean
+
+all:
+	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) KCONFIG_ALLCONFIG=$(OOT_CONFIG) alldefconfig
+	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) -j 12
+
+clean:
+	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) clean
+	rm -f $(OOT)/src/*.o $(OOT)/src/.*.cmd \
+		$(OOT)/vendor/libskybrush/src/lights/*.o $(OOT)/vendor/libskybrush/src/lights/.*.cmd \
+		$(OOT)/vendor/*.o $(OOT)/vendor/.*.cmd \
+		$(OOT)/*.o $(OOT)/.*.cmd
 
 menuconfig:
 	$(MAKE) KBUILD_OUTPUT=$(OOT)/build $(OOT_ARGS) menuconfig

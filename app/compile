@@ -17,5 +17,6 @@ for VARIANT in $VARIANTS; do
     cat conf/${VARIANT}.cfg >>app-config
     make -j 12
     cp build/*.bin cf2-skybrush-${VARIANT}.bin
+    rm -f app-config
 done
 
