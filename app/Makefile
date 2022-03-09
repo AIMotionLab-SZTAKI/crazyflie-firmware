@@ -26,7 +26,12 @@ OOT ?= $(PWD)
 #
 OOT_CONFIG := $(OOT)/app-config
 
-OOT_ARGS ?= -C $(CRAZYFLIE_BASE) OOT=$(OOT) EXTRA_CFLAGS=$(EXTRA_CFLAGS)
+#
+# Indicate that the out-of-tree build should use a C++ linker
+#
+OOT_USES_CXX := 1
+
+OOT_ARGS ?= -C $(CRAZYFLIE_BASE) OOT=$(OOT) OOT_USES_CXX=$(OOT_USES_CXX) EXTRA_CFLAGS=$(EXTRA_CFLAGS)
 
 .PHONY: all clean
 
