@@ -5,8 +5,6 @@ obj-y += cpuid.o
 obj-y += crc32.o
 obj-y += debug.o
 obj-y += eprintf.o
-obj-y += abort.o
-obj-y += malloc.o
 
 ### Implementations for abort(), malloc() and free(), needed to interact with apps written in C++
 obj-y += abort.o
