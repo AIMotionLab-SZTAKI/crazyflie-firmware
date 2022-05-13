@@ -230,6 +230,7 @@ extern const MotorPerifDef* motorMapDefaultBrushed[NBR_OF_MOTORS];
 extern const MotorPerifDef* motorMapDefaltConBrushless[NBR_OF_MOTORS];
 extern const MotorPerifDef* motorMapBigQuadDeck[NBR_OF_MOTORS];
 extern const MotorPerifDef* motorMapBoltBrushless[NBR_OF_MOTORS];
+extern const MotorPerifDef* motorMapBolt11Brushless[NBR_OF_MOTORS];
 
 /**
  * Test sound tones
@@ -252,6 +253,11 @@ void motorsDeInit(const MotorPerifDef** motorMapSelect);
  * the sequence M1 to M4.
  */
 bool motorsTest(void);
+
+/**
+ * Stops all the motors.
+ */
+void motorsStop();
 
 /**
  * Set the PWM ratio of the motor 'id'

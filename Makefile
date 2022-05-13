@@ -8,16 +8,17 @@ CPU                        = stm32f4
 LOAD_ADDRESS_stm32f4       = 0x8000000
 LOAD_ADDRESS_CLOAD_stm32f4 = 0x8004000
 
+PYTHON            ?= python3
+
 # Cload is handled in a special way on windows in WSL to use the Windows python interpreter
 ifdef WSL_DISTRO_NAME
-PYTHON      := python.exe
+CLOAD_SCRIPT      ?= python.exe -m cfloader
 else
-PYTHON      ?= python3
+CLOAD_SCRIPT      ?= $(PYTHON) -m cfloader
 endif
 
 DFU_UTIL          ?= dfu-util
 
-CLOAD_SCRIPT      ?= $(PYTHON) -m cfloader
 CLOAD_CMDS        ?=
 CLOAD_ARGS        ?=
 
@@ -160,9 +161,15 @@ flash_verify:
 	$(OPENOCD) -d2 -f $(OPENOCD_INTERFACE) $(OPENOCD_CMDS) -f $(OPENOCD_TARGET) -c init -c targets -c "reset halt" \
                  -c "verify_image $(PROG).bin $(LOAD_ADDRESS) bin" -c "reset run" -c shutdown
 
+#sends a usb message to the CF to place it in DFU mode, then updates firmware over usb
 flash_dfu:
-	$(PYTHON) tools/make/usb-bootloader.py
-	$(DFU_UTIL) -d 0483:df11 -a 0 -D $(PROG).dfu -s :leave
+	$(PYTHON) $(srctree)/tools/make/usb-bootloader.py
+	$(DFU_UTIL) -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin 
+
+#uses the dfu utility to flash the firmware at 0x08004000, just after the bootloader
+#call this target directly if CF cannont be flashed automatically through flash_dfu
+flash_dfu_manual:
+	$(DFU_UTIL) -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin 
 
 #STM utility targets
 halt:
@@ -203,15 +210,14 @@ ifeq ($(KBUILD_SRC),)
 MOD_INC = src/modules/interface
 MOD_SRC = src/modules/src
 
-bindings_python: bindings/setup.py bin/cffirmware_wrap.c $(MOD_SRC)/*.c
+bindings_python cffirmware.py: bindings/setup.py $(MOD_SRC)/*.c
+	swig -python -I$(MOD_INC) -Isrc/hal/interface -Isrc/utils/interface -o build/cffirmware_wrap.c bindings/cffirmware.i
 	$(PYTHON) bindings/setup.py build_ext --inplace
+	mv build/cffirmware.py cffirmware.py
 
-bin/cffirmware_wrap.c cffirmware.py: bindings/cffirmware.i $(MOD_INC)/*.h
-	swig -python -I$(MOD_INC) -o bin/cffirmware_wrap.c bindings/cffirmware.i
-	mv bin/cffirmware.py cffirmware.py
-
-test_python: bindings_python
+test_python: cffirmware.py
 	$(PYTHON) -m pytest test_python
 endif
 
-.PHONY: all clean build compile unit prep erase flash check_submodules trace openocd gdb halt reset flash_dfu flash_verify cload size print_version clean_version bindings_python
+.PHONY: all clean build compile unit prep erase flash check_submodules trace openocd gdb halt reset flash_dfu flash_dfu_manual flash_verify cload size print_version clean_version bindings_python
+
