@@ -10,6 +10,10 @@ fi
 
 cd "${SCRIPT_ROOT}"
 
+if [ "x$1" != x ]; then
+    VARIANTS="$1"
+fi
+
 for VARIANT in $VARIANTS; do
     make clean
     cp conf/common.cfg app-config
@@ -17,6 +21,6 @@ for VARIANT in $VARIANTS; do
     cat conf/${VARIANT}.cfg >>app-config
     make -j 12
     cp build/*.bin cf2-skybrush-${VARIANT}.bin
-    rm -f app-config
+    rm -f app-config build/*.bin
 done
 
