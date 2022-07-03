@@ -496,7 +496,7 @@ static preflight_check_result_t testPositioningSystem() {
     unsigned int activeBaseStations = logGetUint(logIds.lighthouseBsActive);
     uint8_t i, mask = 1;
 
-    for (i = 0; i < PULSE_PROCESSOR_N_BASE_STATIONS; i++) {
+    for (i = 0; i < CONFIG_DECK_LIGHTHOUSE_MAX_N_BS; i++) {
       if (baseStationsWithCalibrationAndGeometryData & mask) {
         numEnabled++;
 
