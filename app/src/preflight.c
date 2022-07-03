@@ -59,11 +59,18 @@
 #    define PREFLIGHT_MIN_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_LH_BS_COUNT
 #    define PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
 #  endif
+#  ifdef CONFIG_SHOW_POSITIONING_ACTIVE_MARKER
+#    define PREFLIGHT_CHECK_ACTIVE_MARKER_DECK 1
+#  endif
 #endif
 
 #ifdef CONFIG_PREFLIGHT_ENABLE_TRAJECTORY_CHECK
 #  define PREFLIGHT_MIN_TRAJECTORIES CONFIG_PREFLIGHT_MIN_TRAJECTORIES
 #  define PREFLIGHT_MIN_LIGHT_PROGRAMS CONFIG_PREFLIGHT_MIN_LIGHT_PROGRAMS
+#endif
+
+#ifndef PREFLIGHT_CHECK_ACTIVE_MARKER_DECK
+#  define PREFLIGHT_CHECK_ACTIVE_MARKER_DECK 0
 #endif
 
 #ifndef PREFLIGHT_MIN_BATTERY_VOLTAGE
@@ -130,6 +137,7 @@ static struct {
   paramVarId_t kalmanInitialY;
   paramVarId_t kalmanInitialZ;
   paramVarId_t kalmanResetEstimation;
+  paramVarId_t activeMarkerDeckConnected;
 } paramIds;
 
 static preflight_check_status_t preflightCheckStatus = 0;
@@ -153,12 +161,14 @@ void preflightInit() {
   paramIds.kalmanInitialY = paramGetVarId("kalman", "initialY");
   paramIds.kalmanInitialZ = paramGetVarId("kalman", "initialZ");
   paramIds.kalmanResetEstimation = paramGetVarId("kalman", "resetEstimation");
+  paramIds.activeMarkerDeckConnected = paramGetVarId("deck", "bcActiveMarker");
 
   if (
     !PARAM_VARID_IS_VALID(paramIds.kalmanInitialX) ||
     !PARAM_VARID_IS_VALID(paramIds.kalmanInitialY) ||
     !PARAM_VARID_IS_VALID(paramIds.kalmanInitialZ) ||
-    !PARAM_VARID_IS_VALID(paramIds.kalmanResetEstimation)
+    !PARAM_VARID_IS_VALID(paramIds.kalmanResetEstimation) ||
+    !PARAM_VARID_IS_VALID(paramIds.activeMarkerDeckConnected)
   ) {
     /* required parameters missing from firmware */
     return;
@@ -512,6 +522,10 @@ static preflight_check_result_t testPositioningSystem() {
       numEnabled >= PREFLIGHT_MIN_LH_BS_COUNT &&
       numActive >= PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
     );
+  } else if (PREFLIGHT_CHECK_ACTIVE_MARKER_DECK) {
+    /* Positioning system is using active markers, check whether the active
+     * marker deck is connected */
+    PASS_IF_AND_ONLY_IF(paramGetUint(paramIds.activeMarkerDeckConnected));
   } else {
     SKIP;
   }

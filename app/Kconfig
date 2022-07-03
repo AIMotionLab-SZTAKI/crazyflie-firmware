@@ -10,6 +10,9 @@ choice
     config SHOW_POSITIONING_LIGHTHOUSE
         bool "Lighthouse"
 
+    config SHOW_POSITIONING_ACTIVE_MARKER
+        bool "Active markers"
+
 endchoice
 
 menu "Preflight checks"
