@@ -154,6 +154,7 @@ static struct {
   paramVarId_t ledColorBlue;
   paramVarId_t ledRingEffect;
   paramVarId_t highLevelCommanderEnabled;
+  paramVarId_t pmCriticalLowVoltage;
 } paramIds;
 
 static void droneShowTimer(xTimerHandle timer);
@@ -200,8 +201,12 @@ void droneShowInit() {
   paramIds.ledColorGreen = paramGetVarId("ring", "solidGreen");
   paramIds.ledColorBlue = paramGetVarId("ring", "solidBlue");
   paramIds.ledRingEffect = paramGetVarId("ring", "effect");
+  paramIds.pmCriticalLowVoltage = paramGetVarId("pm", "criticalLowVoltage");
 
-  if (!PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled)) {
+  if (
+    !PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled) ||
+    !PARAM_VARID_IS_VALID(paramIds.pmCriticalLowVoltage)
+  ) {
     return;
   }
 
@@ -336,10 +341,10 @@ static void droneShowTimer(xTimerHandle timer) {
     }
   }
 
-  /* Next, if we are airborne and the battery voltage goes below the threshold
-   * for an extended period of time, start landing */
+  /* Next, if we are airborne and the battery voltage goes near the critical
+   * threshold for an extended period of time, start landing */
   if (!isStateOnGround(state) && !isLandingState(state)) {
-    if (pmGetBatteryVoltage() < ((float) DEFAULT_BAT_CRITICAL_LOW_VOLTAGE) + 0.1f) {
+    if (pmGetBatteryVoltage() < paramGetFloat(paramIds.pmCriticalLowVoltage) + 0.1f) {
       lowBatteryCounter++;
       if (lowBatteryCounter >= LOW_BATTERY_DURATION_MSEC / LOOP_INTERVAL_MSEC) {
         setState(STATE_LANDING_LOW_BATTERY);
