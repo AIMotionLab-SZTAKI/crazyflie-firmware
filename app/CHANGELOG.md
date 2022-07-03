@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 20220509
+## 20220703
 
 - Added configuration option to reduce the brightness of the LED ring.
 
