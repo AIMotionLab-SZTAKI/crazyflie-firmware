@@ -32,15 +32,18 @@ typedef struct {
   const char* group;
   const char* name;
   float value;
-  bool optional;
+  uint8_t flags;
 } customParamTableEntry_t;
 
 #define NO_MORE_ENTRIES { 0, 0, 0 }
+
+#define TYPE_FLOAT 0
 #define OPTIONAL 1
+#define TYPE_INT 2
 
 static const customParamTableEntry_t params[] = {
   /* Attitude rate controller PID tuning */
-#ifdef PLATFORM_BOLT
+#ifdef CONFIG_PLATFORM_BOLT
   { "pid_rate", "roll_kp",   70 },
   { "pid_rate", "roll_ki",  200 },
   { "pid_rate", "roll_kd",    2 },
@@ -57,7 +60,7 @@ static const customParamTableEntry_t params[] = {
 #endif
 
   /* Attitude controller PID tuning */
-#ifdef PLATFORM_BOLT
+#ifdef CONFIG_PLATFORM_BOLT
   { "pid_attitude", "roll_kp",  7 },
   { "pid_attitude", "pitch_kp", 7 },
   { "pid_attitude", "roll_ki",  3 },
@@ -76,9 +79,14 @@ static const customParamTableEntry_t params[] = {
   { "posCtlPid", "vxKFF", 1, OPTIONAL },
   { "posCtlPid", "vyKFF", 1, OPTIONAL },
 
-#ifdef PLATFORM_BOLT
+#ifdef CONFIG_PLATFORM_BOLT
   /* Larger Bolt-bases show drones are okay with a lower thrust base */
-  { "posCtlPid", "thrustBase", 30000 },
+  { "posCtlPid", "thrustBase", 30000, TYPE_INT },
+
+  /* Currently we always use single-cell batteries so the voltage thresholds
+   * need to be adjusted */
+  { "pm", "lowVoltage", 3.2 },
+  { "pm", "criticalLowVoltage", 3.0 },
 #endif
 
   NO_MORE_ENTRIES
@@ -92,12 +100,18 @@ bool droneShowApplyCustomParameters(void) {
     paramVarId_t paramId = paramGetVarId(entry->group, entry->name);
 
     if (PARAM_VARID_IS_VALID(paramId)) {
-      if (paramGetFloat(paramId) != entry->value) {
-        paramSetFloat(paramId, entry->value);
+      if (entry->flags & TYPE_INT) {
+        if (paramGetInt(paramId) != entry->value) {
+          paramSetInt(paramId, entry->value);
+        }
+      } else {
+        if (paramGetFloat(paramId) != entry->value) {
+          paramSetFloat(paramId, entry->value);
+        }
       }
-    } else if (!entry->optional) {
+    } else if (!(entry->flags & OPTIONAL)) {
       if (allValid) {
-        DEBUG_PRINT("Cannot set param %s.%s", entry->group, entry->name);
+        DEBUG_PRINT("Cannot set param %s.%s\n", entry->group, entry->name);
       }
       allValid = false;
     }
