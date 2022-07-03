@@ -581,14 +581,9 @@ void paramSetFloat(paramVarId_t varid, float valuef)
   pk.data[0] = MISC_VALUE_UPDATED;
   pk.data[1] = varid.id & 0xffu;
   pk.data[2] = (varid.id >> 8) & 0xffu;
-  pk.size=3;
+  pk.size = 3;
 
-  if ((params[varid.index].type & (~PARAM_CORE)) == PARAM_FLOAT) {
-      *(float *)params[varid.index].address = valuef;
-
-      memcpy(&pk.data[2], &valuef, 4);
-      pk.size += 4;
-  }
+  pk.size += paramSet(varid.index, (void *)&valuef);
 
 #ifndef CONFIG_PARAM_SILENT_UPDATES
   crtpSendPacketBlock(&pk);
