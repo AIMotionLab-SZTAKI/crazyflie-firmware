@@ -3,18 +3,19 @@
 # Builds release versions of the Crazyflie firmware and the drone show app
 # by re-packaging an official Crazyflie firmware release
 
-# Our firmware version number
-VERSION=`date +%Y.%m`
+set -e
 
-# Variants of the firmware to build
-VARIANTS="stock-uwb stock-lh show-proto-v1 show-proto-v2-uwb show-proto-v2-lh"
-
-# Upstream Crazyflie version on top of which this firmware is built
-UPSTREAM_CF_VERSION=2021.06
+SCRIPT_ROOT="`dirname $0`"
 
 ###############################################################################
 
-set -e
+# Our firmware version number
+VERSION=`date +%Y.%m`
+
+# Upstream Crazyflie version on top of which this firmware is built
+UPSTREAM_CF_VERSION=2022.05
+
+###############################################################################
 
 CURRENT_DIR="`pwd`"
 
@@ -30,31 +31,45 @@ rm -rf "${TMP_DIR}"
 mkdir -p "${TMP_DIR}"
 
 echo "Downloading official Crazyflie release, version ${UPSTREAM_CF_VERSION}..."
-curl -sLo "${TMP_DIR}/firmware.zip" https://github.com/bitcraze/crazyflie-release/releases/download/${UPSTREAM_CF_VERSION}/firmware-cf2-${UPSTREAM_CF_VERSION}.zip
+curl -sLo "${TMP_DIR}/firmware-cf2.zip" https://github.com/bitcraze/crazyflie-release/releases/download/${UPSTREAM_CF_VERSION}/firmware-cf2-${UPSTREAM_CF_VERSION}.zip
+curl -sLo "${TMP_DIR}/firmware-bolt.zip" https://github.com/bitcraze/crazyflie-release/releases/download/${UPSTREAM_CF_VERSION}/firmware-bolt-${UPSTREAM_CF_VERSION}.zip
+
+# Variants of the firmware to build
+if [ "x$VARIANTS" = x ]; then
+    VARIANTS=`find "${APP_ROOT}/conf" -name '*.cfg' -exec basename {} .cfg \; | grep -v common | sort`
+fi
 
 cd "${APP_ROOT}"
 make clean
 for VARIANT in ${VARIANTS}; do
     echo "Compiling custom firmware for ${VARIANT}..."
-    make CF_MODEL=${VARIANT}
-    ZIP_NAME="skybrush-cf2_${VARIANT}_${VERSION}"
-    rm -f "${TMP_DIR}"/cf2-*.bin
-    cp cf2-*.bin "${TMP_DIR}"
-    make clean
+    rm -rf build *.bin
+    ./compile ${VARIANT}
 
-    cp "${TMP_DIR}/firmware.zip" "${TMP_DIR}/${ZIP_NAME}.zip"
-    mv ${TMP_DIR}/cf2-*.bin "${TMP_DIR}/cf2-${UPSTREAM_CF_VERSION}.bin"
-    ( cd "${TMP_DIR}" && zip "${ZIP_NAME}.zip" "cf2-${UPSTREAM_CF_VERSION}.bin" )
-    rm -f "${TMP_DIR}"/cf2-*.bin
+    BASE_BOARD=`cat app-config | grep "^CONFIG_PLATFORM_" | cut -d '_' -f 3 | cut -d '=' -f 1 | tr -d ' ' | tr 'A-Z' 'a-z'`
+
+    ZIP_NAME="skybrush-${BASE_BOARD}_${VARIANT}_${VERSION}"
+    rm -f "${TMP_DIR}"/${BASE_BOARD}-skybrush-*.bin
+    cp ${BASE_BOARD}-skybrush-*.bin "${TMP_DIR}"
+    make clean
+    rm -rf build *.bin
+
+    cp "${TMP_DIR}/firmware-${BASE_BOARD}.zip" "${TMP_DIR}/${ZIP_NAME}.zip"
+    mv ${TMP_DIR}/${BASE_BOARD}-*.bin "${TMP_DIR}/${BASE_BOARD}-${UPSTREAM_CF_VERSION}.bin"
+    ( cd "${TMP_DIR}" && zip "${ZIP_NAME}.zip" "${BASE_BOARD}-${UPSTREAM_CF_VERSION}.bin" )
+    rm -f "${TMP_DIR}"/${BASE_BOARD}-*.bin
 done
 
 cd "${CURRENT_DIR}"
-mv "${TMP_DIR}"/skybrush-cf2*.zip .
+rm -rf dist/${VERSION}
+mkdir -p dist/${VERSION}
+mv "${TMP_DIR}"/skybrush-*.zip dist/${VERSION}
+zip -0 -r dist/skybrush-cf2-${VERSION}.zip dist/${VERSION}
 
 echo ""
 echo "========================================================================"
 echo ""
 
 echo "Firmware built in:"
-ls skybrush-cf2*.zip
+ls dist/${VERSION}/skybrush-*.zip
 
