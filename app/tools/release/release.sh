@@ -62,14 +62,17 @@ done
 
 cd "${CURRENT_DIR}"
 rm -rf dist/${VERSION}
-mkdir -p dist/${VERSION}
-mv "${TMP_DIR}"/skybrush-*.zip dist/${VERSION}
-zip -0 -r dist/skybrush-cf2-${VERSION}.zip dist/${VERSION}
+for VARIANT in ${VARIANTS}; do
+    mkdir -p dist/${VERSION}/${VARIANT}
+    mv "${TMP_DIR}"/skybrush-*_${VARIANT}_*.zip dist/${VERSION}/${VARIANT}
+done
+
+# zip -0 -r dist/skybrush-cf2-${VERSION}.zip dist/${VERSION}
 
 echo ""
 echo "========================================================================"
 echo ""
 
 echo "Firmware built in:"
-ls dist/${VERSION}/skybrush-*.zip
+find dist/${VERSION} -name 'skybrush-*.zip'
 
