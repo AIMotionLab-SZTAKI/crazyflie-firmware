@@ -543,7 +543,7 @@ float paramGetFloat(paramVarId_t varid)
 {
   ASSERT(PARAM_VARID_IS_VALID(varid));
 
-  if ((params[varid.index].type & (~(PARAM_CORE | PARAM_RONLY))) == PARAM_FLOAT)
+  if ((params[varid.index].type & (~(PARAM_CORE | PARAM_RONLY | PARAM_EXTENDED))) == PARAM_FLOAT)
     return *(float *)params[varid.index].address;
 
   return (float)paramGetInt(varid);
