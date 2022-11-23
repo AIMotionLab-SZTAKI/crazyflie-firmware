@@ -12,6 +12,7 @@ include = [
     "build/include/generated",
     "src/config",
     "src/drivers/interface",
+    "src/platform/interface",
 ]
 
 fw_sources = [
@@ -26,7 +27,9 @@ fw_sources = [
     "src/utils/src/filter.c",
     "src/utils/src/num.c",
     "src/modules/src/controller_mellinger.c",
+    "src/modules/src/controller_brescianini.c",
     "src/modules/src/power_distribution_quadrotor.c",
+    # "src/modules/src/power_distribution_flapper.c",
 ]
 
 cffirmware = Extension(

@@ -14,6 +14,18 @@ config CONTROLLER_PID
     help
         Use the PID (proportional–integral–derivative) controller as default
 
+config CONTROLLER_PID_FILTER_ALL
+    bool "Apply LPF filter to all PID components"
+    depends on CONTROLLER_PID
+    help
+        Apply a low pass filter to all PID components instead of only the D component (default)
+
+config CONTROLLER_PID_IMPROVED_BARO_Z_HOLD
+    bool "Use improved baro z hold"
+    depends on CONTROLLER_PID_FILTER_ALL
+    help
+        Uses an improved z hold based on barometric pressure
+
 config CONTROLLER_INDI
     bool "INDI controller"
     help
@@ -23,6 +35,11 @@ config CONTROLLER_MELLINGER
     bool "Mellinger controller"
     help
         Use the Mellinger controller as default
+
+config CONTROLLER_BRESCIANINI
+    bool "Brescianini controller"
+    help
+        Use the Brescianini controller as default
 
 endchoice
 
@@ -136,7 +153,28 @@ config POWER_DISTRIBUTION_QUADROTOR
     depends on PLATFORM_CF2 || PLATFORM_BOLT || PLATFORM_TAG
     help
         Power distribution function for quadrotors
+config POWER_DISTRIBUTION_FLAPPER
+    bool "Flapper Nimble+ power distribution"
+    depends on PLATFORM_FLAPPER
+    help
+        Power distribution function for Flapper Nimble+
+
 endchoice
+config POWER_DISTRIBUTION_FLAPPER_REVB
+    bool "Flapper  Nimble+ power distribution (PCB revision B)"
+    depends on POWER_DISTRIBUTION_FLAPPER
+    default n
+    help
+        Power distribution function for Flapper Nimble+ with revB PCB
+
+config ENABLE_THRUST_BAT_COMPENSATED
+    bool "Enable battery thrust compensation"
+    default y
+    help
+        Compensate thrust depending on battery voltage so it will produce about the same
+        amount of thrust independent of the battery voltage.
+        The compensation is based on thrust measurements, which are only valid for CF2.X stock configuration.
+        Not applied for brushless motor setup.
 
 endmenu
 
