@@ -15,8 +15,6 @@ if [ "x$1" != x ]; then
 fi
 
 for VARIANT in $VARIANTS; do
-    make clean
-
     rm -f app-config
     cp conf/common.cfg app-config
     echo "" >>app-config
@@ -24,6 +22,7 @@ for VARIANT in $VARIANTS; do
 
     BASE_BOARD=`cat app-config | grep "^CONFIG_PLATFORM_" | cut -d '_' -f 3 | cut -d '=' -f 1 | tr -d ' ' | tr 'A-Z' 'a-z'`
 
+    make clean
     make -j 12
     cp build/${BASE_BOARD}.bin ${BASE_BOARD}-skybrush-${VARIANT}.bin
     rm -f build/*.bin
