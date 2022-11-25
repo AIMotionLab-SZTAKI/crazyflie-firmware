@@ -175,6 +175,7 @@ static bool onEnteredState(show_state_t state, show_state_t oldState);
 static void onLeavingState(show_state_t state, show_state_t newState);
 static void setState(show_state_t newState);
 static bool shouldRunPreflightChecksInState(show_state_t state);
+static bool shouldRunLandingLightInState(show_state_t state);
 static bool shouldRunLightProgramInState(show_state_t state);
 static bool shouldStartWithFailingPreflightChecks();
 static void updateLEDRing();
@@ -582,6 +583,8 @@ static uint8_t desiredLEDEffectForState(show_state_t state) {
     return 7;     /* solid color */
   } else if (shouldRunLightProgramInState(state)) {
     return 7;     /* solid color */
+  } else if (shouldRunLandingLightInState(state)) {
+    return 7;     /* solid color */
   } else if (isErrorState(state)) {
     return 11;    /* siren */
   } else {
@@ -596,7 +599,6 @@ static uint8_t desiredLEDEffectForState(show_state_t state) {
 static bool isErrorState(show_state_t state) {
   return (
     state == STATE_ERROR ||
-    state == STATE_LANDING_LOW_BATTERY ||
     state == STATE_EXHAUSTED
   );
 }
@@ -911,6 +913,14 @@ static bool shouldRunLightProgramInState(show_state_t state) {
 }
 
 /**
+ * Returns whether the landing light animation should be playing on the LED
+ * ring in the given state.
+ */
+static bool shouldRunLandingLightInState(show_state_t state) {
+  return state == STATE_LANDING_LOW_BATTERY;
+}
+
+/**
  * Returns whether the drone should attempt to start the show even if the
  * preflight checks are failing.
  */
@@ -1003,6 +1013,13 @@ static void updateLEDRing() {
   } else if (shouldRunLightProgramInState(state)) {
     /* Light program is running in this state so evaluate the light program */
     lightProgramPlayerEvaluate(lastColor);
+  } else if (shouldRunLandingLightInState(state)) {
+    /* Landing light should be shown in this state */
+    now = getUsecTimestampForLightPatterns();
+    lastColor[0] = 64;
+    lastColor[1] = 32;
+    lastColor[2] = 0;
+    modulateColorWithBreathingPattern(lastColor, now);
   } else {
     /* we are not controlling the LED ring in this state. Errors are handled by
      * the "siren" pattern */
