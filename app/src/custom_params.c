@@ -89,6 +89,14 @@ static const customParamTableEntry_t params[] = {
   { "pm", "criticalLowVoltage", 3.0 },
 #endif
 
+#ifdef CONFIG_SHOW_TDOA_LARGE_AREA
+  { "tdoa3", "stddev", 0.8 },
+#endif
+
+#ifdef CONFIG_SHOW_STEALTH_MODE
+  { "led", "bitmask", 128, TYPE_INT },
+#endif
+
   NO_MORE_ENTRIES
 };
 

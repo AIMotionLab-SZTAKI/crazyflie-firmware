@@ -91,6 +91,8 @@ config SHOW_TAKEOFF_HEIGHT_CM
         Altitude that the drone should take off to at the start of the show,
         assuming that the ground is at Z=0.
 
+menu "Custom hacks"
+
 config SHOW_SMOOTH_TAKEOFF
     bool "Use smooth takeoff"
     default n
@@ -106,6 +108,22 @@ config SHOW_MODE_SILENT
     help
         Prevents the drone from sending console messages related to the show
         subsystem of the firmware.
+
+config SHOW_STEALTH_MODE
+    bool "Turn off onboard status LEDs"
+    default n
+    help
+        Turn off the onboard status LEDs to make the drone completely dark
+        apart from the LED deck
+
+config SHOW_TDOA_LARGE_AREA
+    bool "Assume a larger area and larger stddev for TDoA measurements"
+    default n
+    help
+        Increase the standard deviation of TDoA measurements for large areas,
+        especially when using the "long range" TDoA mode
+
+endmenu
 
 endmenu
 

@@ -111,6 +111,8 @@
  * reaches 0.001f, making the Kalman preflight test fail temporarily */
 #ifdef CONFIG_SHOW_POSITIONING_LIGHTHOUSE
 #  define KALMAN_VARIANCE_THRESHOLD 0.002f
+#elif defined(CONFIG_SHOW_TDOA_LARGE_AREA)
+#  define KALMAN_VARIANCE_THRESHOLD 0.01f
 #else
 #  define KALMAN_VARIANCE_THRESHOLD 0.001f
 #endif
