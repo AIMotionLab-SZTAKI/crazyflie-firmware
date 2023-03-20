@@ -2,10 +2,10 @@ menu "Controllers and Estimators"
 
 choice
     prompt "Default controller"
-    default CONFIG_CONTROLLER_ANY
+    default CONFIG_CONTROLLER_AUTO_SELECT
 
-config CONTROLLER_ANY
-    bool "Any Controller"
+config CONTROLLER_AUTO_SELECT
+    bool "Auto select Controller"
     help
         Do not care which controller is used, if any
 
@@ -43,11 +43,22 @@ config CONTROLLER_BRESCIANINI
 
 endchoice
 
+config CONTROLLER_OOT
+    bool "Out-of-tree controller"
+    default n
+
 config ESTIMATOR_KALMAN_ENABLE
     bool "Enable Kalman Estimator"
     default y
     help
         Enable the Kalman (EKF) estimator.
+
+config ESTIMATOR_KALMAN_TDOA_OUTLIERFILTER_FALLBACK
+    bool "Use 'old' TDoA outlier filter."
+    default n
+    depends on ESTIMATOR_KALMAN_ENABLE
+    help
+        Use the 'old' TDoA outlier filter instead of the default one. Deprecated, will be removed after September 2023.
 
 config ESTIMATOR_UKF_ENABLE
     bool "Enable error-state UKF estimator"
@@ -57,10 +68,10 @@ config ESTIMATOR_UKF_ENABLE
 
 choice
     prompt "Default estimator"
-    default CONFIG_ESTIMATOR_ANY
+    default CONFIG_ESTIMATOR_AUTO_SELECT
 
-config ESTIMATOR_ANY
-    bool "Any Estimator"
+config ESTIMATOR_AUTO_SELECT
+    bool "Auto select Estimator"
     help
         Do not care which estimator is used, if any
 

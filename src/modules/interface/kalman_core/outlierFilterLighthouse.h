@@ -5,7 +5,7 @@
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
  *
- * Copyright (C) 2011-2019 Bitcraze AB
+ * Copyright (C) 2011-2023 Bitcraze AB
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,23 +19,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * outlierFilter.h: Outlier rejection filter for the kalman filter
+ * Outlier rejection filter for the kalman filter
  */
 
-#ifndef __OUTLIER_FILTER_H__
-#define __OUTLIER_FILTER_H__
+#pragma once
 
 #include "stabilizer_types.h"
-
-bool outlierFilterValidateTdoaSimple(const tdoaMeasurement_t* tdoa);
-bool outlierFilterValidateTdoaSteps(const tdoaMeasurement_t* tdoa, const float error, const vector_t* jacobian, const point_t* estPos);
 
 typedef struct {
     uint32_t openingTimeMs;
     int32_t openingWindowMs;
 } OutlierFilterLhState_t;
-bool outlierFilterValidateLighthouseSweep(OutlierFilterLhState_t* this, const float distanceToBs, const float angleError, const uint32_t nowMs);
-void outlierFilterReset(OutlierFilterLhState_t* this, const uint32_t nowMs);
 
-
-#endif // __OUTLIER_FILTER_H__
+bool outlierFilterLighthouseValidateSweep(OutlierFilterLhState_t* this, const float distanceToBs, const float angleError, const uint32_t nowMs);
+void outlierFilterLighthouseReset(OutlierFilterLhState_t* this, const uint32_t nowMs);
