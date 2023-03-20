@@ -153,7 +153,6 @@ static struct {
   paramVarId_t ledColorGreen;
   paramVarId_t ledColorBlue;
   paramVarId_t ledRingEffect;
-  paramVarId_t highLevelCommanderEnabled;
   paramVarId_t pmCriticalLowVoltage;
 } paramIds;
 
@@ -197,17 +196,13 @@ void droneShowInit() {
   xTimerStart(timer, LOOP_INTERVAL_MSEC);
 
   /* Retrieve the IDs of the log variables and parameters that we will need */
-  paramIds.highLevelCommanderEnabled = paramGetVarId("commander", "enHighLevel");
   paramIds.ledColorRed = paramGetVarId("ring", "solidRed");
   paramIds.ledColorGreen = paramGetVarId("ring", "solidGreen");
   paramIds.ledColorBlue = paramGetVarId("ring", "solidBlue");
   paramIds.ledRingEffect = paramGetVarId("ring", "effect");
   paramIds.pmCriticalLowVoltage = paramGetVarId("pm", "criticalLowVoltage");
 
-  if (
-    !PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled) ||
-    !PARAM_VARID_IS_VALID(paramIds.pmCriticalLowVoltage)
-  ) {
+  if (!PARAM_VARID_IS_VALID(paramIds.pmCriticalLowVoltage)) {
     return;
   }
 
@@ -421,8 +416,9 @@ static void droneShowTimer(xTimerHandle timer) {
       if (crtpCommanderHighLevelIsTrajectoryFinished()) {
         /* show finished, let's land */
         setState(STATE_LANDING);
-      } else if (!paramGetInt(paramIds.highLevelCommanderEnabled)) {
-        /* high-level commander was stopped, switch to manual control? */
+      } else if (commanderGetActivePriority() > COMMANDER_PRIORITY_HIGHLEVEL) {
+        /* someone sent a command to the drone that overrode the internal 
+         * high-level commander, switch to manual control? */
         setState(STATE_MANUAL_CONTROL);
       }
       break;
@@ -649,19 +645,11 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
    * commander is doing */
   if (state == STATE_IDLE || state == STATE_LANDED || state == STATE_MANUAL_CONTROL) {
     crtpCommanderHighLevelStop();
-    paramSetInt(paramIds.highLevelCommanderEnabled, 0);
   }
 
   /* If we have entered the error state, force-disarm the system immediately */
   if (state == STATE_ERROR) {
     armingForceDisarm();
-  }
-
-  /* If we have left the idle state and we did not go into the error or manual
-   * state, turn the high-level controller on */
-  if ((oldState == STATE_IDLE || oldState == STATE_LANDED || oldState == STATE_MANUAL_CONTROL) &&
-      (state != STATE_ERROR && state != STATE_IDLE && state != STATE_LANDED && state != STATE_MANUAL_CONTROL)) {
-    paramSetInt(paramIds.highLevelCommanderEnabled, 1);
   }
 
   /* Enable the preflight checks if needed */

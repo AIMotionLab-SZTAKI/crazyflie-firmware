@@ -83,9 +83,6 @@ static struct {
   logVarId_t ledColorGreen;
   logVarId_t ledColorBlue;
 } logIds;
-static struct {
-  paramVarId_t highLevelCommanderEnabled;
-} paramIds;
 
 static void droneShowSrvCrtpCB(CRTPPacket* pk);
 static void handleArmOrDisarmCommandPacket(CRTPPacket* pk);
@@ -104,12 +101,8 @@ void droneShowSrvInit() {
   logIds.ledColorGreen = logGetVarId("show", "ledColorGreen");
   logIds.ledColorBlue = logGetVarId("show", "ledColorBlue");
   logIds.stateEstimateYaw = logGetVarId("stateEstimate", "yaw");
-  paramIds.highLevelCommanderEnabled = paramGetVarId("commander", "enHighLevel");
 
-  if (
-    !logVarIdIsValid(logIds.stateEstimateYaw) ||
-    !PARAM_VARID_IS_VALID(paramIds.highLevelCommanderEnabled)
-  ) {
+  if (!logVarIdIsValid(logIds.stateEstimateYaw)) {
     return;
   }
 
@@ -274,8 +267,8 @@ static void updatePacketWithStatusInformation(CRTPPacket* pk) {
   pk->data[3] = (
     /* is the battery charging? */
     (pmIsCharging() ? 1 : 0) |
-    /* is the high level commander turned on? */
-    (paramGetUint(paramIds.highLevelCommanderEnabled) ? (1 << 1) : 0) |
+    /* is the high level commander being used now? */
+    (commanderGetActivePriority() == COMMANDER_PRIORITY_HIGHLEVEL ? (1 << 1) : 0) |
     /* is the drone show mode turned on? */
     (droneShowIsEnabled() ? (1 << 2) : 0) |
     /* is the drone flying? */
