@@ -13,7 +13,7 @@ SCRIPT_ROOT="`dirname $0`"
 VERSION=`date +%Y%m%d`
 
 # Upstream Crazyflie version on top of which this firmware is built
-UPSTREAM_CF_VERSION=2022.12
+UPSTREAM_CF_VERSION=2023.02
 
 ###############################################################################
 
