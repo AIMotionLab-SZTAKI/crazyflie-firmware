@@ -376,6 +376,7 @@ static preflight_check_result_t testKalmanFilter() {
 
   uint16_t i, dim, count;
   float minValue, maxValue;
+  bool diffTooLarge = false;
   preflight_check_result_t result = preflightResultWait;
 
   /* Perform a reset of the Kalman filter if needed */
@@ -439,15 +440,16 @@ static preflight_check_result_t testKalmanFilter() {
     }
     
     if ((maxValue - minValue) > KALMAN_VARIANCE_THRESHOLD) {
-      /* Difference too large. If the trend is increasing, fail here */
+      /* Difference too large. If the trend is increasing, remember that so we
+       * can trigger a reset later if needed */
       if (writeIndex < KALMAN_VARIANCE_LOG_LENGTH - 1) {
         if (varianceLog[writeIndex][dim] > varianceLog[writeIndex+1][dim]) {
-          result = preflightResultFail;
+          diffTooLarge = true;
           break;
         }
       } else {
         if (varianceLog[KALMAN_VARIANCE_LOG_LENGTH - 1][dim] > varianceLog[0][dim]) {
-          result = preflightResultFail;
+          diffTooLarge = true;
           break;
         }
       }
@@ -460,13 +462,15 @@ static preflight_check_result_t testKalmanFilter() {
     writeIndex = 0;
   }
 
-  /* If we have been failing for a long time, reset the filter */
-  if (result == preflightResultFail) {
+  /* If the variance difference between min and max is too large and it has been
+   * so for a long while now, reset the filter */
+  if (diffTooLarge) {
     failureCounter++;
     if (failureCounter > 5000 / PREFLIGHT_CHECK_INTERVAL_MSEC) {
       requestKalmanFilterReset();
       failureCounter = 0;
     }
+    result = preflightResultWait;
   } else {
     failureCounter = 0;
   }
