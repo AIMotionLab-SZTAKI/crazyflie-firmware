@@ -682,17 +682,23 @@ static bool onEnteredState(show_state_t state, show_state_t oldState) {
      * since we do that five seconds before the takeoff) */
     armAutomaticallyIfNeeded();
   
+
+    /*Boti Note: This is the part responsible for the aggressive takeoff
+    during show. If this behaviour is undesirable, needs to be commented out.
+    */
+  
     /* Start the takeoff */
-    crtpCommanderHighLevelTakeoffWithVelocity(
-      SHOW_TAKEOFF_HEIGHT,
-      TAKEOFF_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
-      /* relative = */ 1
-    );
+    //crtpCommanderHighLevelTakeoffWithVelocity(
+    //  SHOW_TAKEOFF_HEIGHT,
+    //  TAKEOFF_VELOCITY_METERS_PER_SEC / TAKEOFF_CORRECTION_FACTOR,
+    //  /* relative = */ 1
+    //);
 
     /* Start a counter as well so we indicate that the trajectory starts with
      * a takeoff phase -- we will move to the "performing" phase when the
      * timeout is over */
-    waitCounter = ceilf(((float)TAKEOFF_DURATION_MSEC) * TAKEOFF_CORRECTION_FACTOR / LOOP_INTERVAL_MSEC) - 1;
+    //waitCounter = ceilf(((float)TAKEOFF_DURATION_MSEC) * TAKEOFF_CORRECTION_FACTOR / LOOP_INTERVAL_MSEC) - 1;
+    waitCounter = 0;
     lowBatteryCounter = 0;
   }
 

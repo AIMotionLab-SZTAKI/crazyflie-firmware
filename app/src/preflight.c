@@ -59,8 +59,11 @@
 #    define PREFLIGHT_MIN_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_LH_BS_COUNT
 #    define PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT CONFIG_PREFLIGHT_MIN_ACTIVE_LH_BS_COUNT
 #  endif
+/*Boti Note: Below should be define PREFLIGHT_CHECK_ACTIVE_MARKER_DECK 1, however,
+we are using the passive marker deck. Maybe should be changed elsewhere though.
+*/
 #  ifdef CONFIG_SHOW_POSITIONING_ACTIVE_MARKER
-#    define PREFLIGHT_CHECK_ACTIVE_MARKER_DECK 1
+#    define PREFLIGHT_CHECK_ACTIVE_MARKER_DECK 0
 #  endif
 #endif
 
