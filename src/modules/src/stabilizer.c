@@ -57,6 +57,8 @@
 #include "static_mem.h"
 #include "rateSupervisor.h"
 
+static float voltage = 0.0;
+
 static bool isInit;
 static bool emergencyStop = false;
 static int emergencyStopTimeout = EMERGENCY_STOP_TIMEOUT_DISABLED;
@@ -218,6 +220,7 @@ static void checkEmergencyStopTimeout()
 static void batteryCompensation(const motors_thrust_uncapped_t* motorThrustUncapped, motors_thrust_uncapped_t* motorThrustBatCompUncapped)
 {
   float supplyVoltage = pmGetBatteryVoltage();
+  voltage = supplyVoltage;
 
   for (int motor = 0; motor < STABILIZER_NR_OF_MOTORS; motor++)
   {
@@ -504,6 +507,14 @@ LOG_GROUP_STOP(ctrltargetZ)
  * for the stabilizer module
  */
 LOG_GROUP_START(stabilizer)
+
+LOG_ADD(LOG_UINT16, m1, &motorPwm.motors.m1)
+LOG_ADD(LOG_UINT16, m2, &motorPwm.motors.m2)
+LOG_ADD(LOG_UINT16, m3, &motorPwm.motors.m3)
+LOG_ADD(LOG_UINT16, m4, &motorPwm.motors.m4)
+
+LOG_ADD(LOG_FLOAT, voltage, &voltage)
+
 /**
  * @brief Estimated roll
  *   Note: Same as stateEstimate.roll
