@@ -28,7 +28,11 @@
 
 #include "stabilizer_types.h"
 
+/*Create new supervisorUpdate which carries in it the state estimate, to use
+for safeBox
 void supervisorUpdate(const sensorData_t *data);
+*/
+void supervisorUpdate(const sensorData_t *data, const state_t *state);
 
 bool supervisorCanFly(void);
 bool supervisorIsFlying(void);

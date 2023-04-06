@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 #include "log.h"
+#include "param.h"
 #include "motors.h"
 #include "power_distribution.h"
 #include "pm.h"
@@ -45,6 +46,15 @@
 static bool canFly;
 static bool isFlying;
 static bool isTumbled;
+
+static bool isOutOfBox;
+static float box_x_low = -1.5;
+static float box_x_high = 1.5;
+static float box_y_low = -1.5;
+static float box_y_high = 1.5;
+static float box_z_low = -0.2;
+static float box_z_high = 1.7;
+
 
 bool supervisorCanFly()
 {
@@ -114,11 +124,31 @@ static bool isTumbledCheck(const sensorData_t *data)
   return false;
 }
 
-void supervisorUpdate(const sensorData_t *data)
+static bool isOutOfBoxCheck (const state_t *state) {
+  float x = state->position.x;
+  float y = state->position.y;
+  float z = state->position.z;
+
+  if (x > box_x_high || x < box_x_low || y > box_y_high || y < box_y_low || z > box_z_high|| z < box_z_low) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+void supervisorUpdate(const sensorData_t *data, const state_t *state)
 {
   isFlying = isFlyingCheck();
 
   isTumbled = isTumbledCheck(data);
+
+  isOutOfBox = isOutOfBoxCheck(state);
+  if (isOutOfBox && isFlying) {
+    stabilizerSetEmergencyStop();
+  }
+
+
   #if SUPERVISOR_TUMBLE_CHECK_ENABLE
   if (isTumbled && isFlying) {
     stabilizerSetEmergencyStop();
@@ -143,4 +173,19 @@ LOG_ADD_CORE(LOG_UINT8, isFlying, &isFlying)
  * @brief Nonzero if the system thinks it is tumbled/crashed
  */
 LOG_ADD_CORE(LOG_UINT8, isTumbled, &isTumbled)
+/**
+ * @brief Nonzero if the system thinks it is out of the safe box
+ */
+LOG_ADD_CORE(LOG_UINT8, isOutOfBox, &isOutOfBox)
 LOG_GROUP_STOP(sys)
+
+PARAM_GROUP_START(safeBox)
+
+  PARAM_ADD_CORE(PARAM_FLOAT, box_x_low, &box_x_low)
+  PARAM_ADD_CORE(PARAM_FLOAT, box_x_high, &box_x_high)
+  PARAM_ADD_CORE(PARAM_FLOAT, box_y_low, &box_y_low)
+  PARAM_ADD_CORE(PARAM_FLOAT, box_y_high, &box_y_high)
+  PARAM_ADD_CORE(PARAM_FLOAT, box_z_low, &box_z_low)
+  PARAM_ADD_CORE(PARAM_FLOAT, box_z_high, &box_z_high)
+
+PARAM_GROUP_STOP(safeBox)

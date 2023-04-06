@@ -35,6 +35,18 @@
  * All have a timestamp to be set when the data is calculated.
  */
 
+/*Boti note: Box where the drone is allowed to fly
+Needs further work, something is off in my syntax
+*/
+typedef struct{
+  float box_x_low;
+  float box_x_high;
+  float box_y_low;
+  float box_y_high; 
+  float box_z_low;
+  float box_z_high;
+}safeBox_t;
+
 /** Attitude in euler angle form */
 typedef struct attitude_s {
   uint32_t timestamp;  // Timestamp when the data was computed
