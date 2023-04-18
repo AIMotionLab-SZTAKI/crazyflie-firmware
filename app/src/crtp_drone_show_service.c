@@ -43,7 +43,7 @@
 #include "system.h"
 
 #include "stabilizer_types.h"
-#include "quadcompress.h"
+#include "quatcompress.h"
 #include "crtp_localization_service.h"
 
 #define DEBUG_MODULE "SHOW"
@@ -107,6 +107,8 @@ static void handleDefineFencePacket(CRTPPacket* pk);
 static void handleDefineLightProgramPacket(CRTPPacket* pk);
 static void handleTriggerGcsLightEffectPacket(CRTPPacket* pk);
 static void updatePacketWithStatusInformation(CRTPPacket* pk);
+static void droneShowSrvLoadPosePacket(CRTPPacket* pk);
+static void handleLoadPosePacket(CRTPPacket* pk);
 
 void droneShowSrvInit() {
   if (isInit) {
@@ -220,11 +222,11 @@ static void handleLoadPosePacket(CRTPPacket* pk) {
   // similar to extPosePackedHandler in crtp_localization_service
   struct data_load_pose data = *((struct data_load_pose*)(pk->data + 1));
   
-  if (data->id == payload_id) {
-    load_pose.x = data->x / 1000.0f;
-    load_pose.y = data->y / 1000.0f;
-    load_pose.z = data->z / 1000.0f;
-    quatdecompress(data->quat, (float *)&load_pose.quat.q0);
+  if (data.id == payload_id) {
+    load_pose.x = data.x / 1000.0f;
+    load_pose.y = data.y / 1000.0f;
+    load_pose.z = data.z / 1000.0f;
+    quatdecompress(data.quat, (float *)&load_pose.quat.q0);
     // load_pose.stdDevPos = 1;  // not needed yet
     // load_pose.stdDevQuat = 1;
     // estimatorEnqueuePose(&ext_pose);
