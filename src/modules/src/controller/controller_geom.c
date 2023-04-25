@@ -59,6 +59,16 @@ static float g_vehicleMass = 0.032;
 
 static float psi = 0;
 
+static poseMeasurement_t load_pose;
+
+void setLoadPose(const poseMeasurement_t *measurement)
+{
+  load_pose.x = measurement->x;
+  load_pose.y = measurement->y;
+  load_pose.z = measurement->z;
+  load_pose.quat = measurement->quat;
+}
+
 
 void controllerGeomReset(void)
 {
@@ -290,5 +300,6 @@ LOG_ADD(LOG_UINT8, pitch_Mode, &setPointMode_pitch)
 LOG_ADD(LOG_UINT8, yaw_Mode, &setPointMode_yaw)
 LOG_ADD(LOG_UINT8, quat_Mode, &setPointMode_quat)
 LOG_ADD(LOG_UINT8, ctrlMode, &ctrlMode)
-
+LOG_ADD(LOG_FLOAT, load_x, &load_pose.x)
+LOG_ADD(LOG_FLOAT, load_qx, &load_pose.quat.q0)
 LOG_GROUP_STOP(ctrlGeom)

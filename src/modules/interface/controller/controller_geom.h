@@ -12,4 +12,5 @@ void controllerGeom(control_t *control, const setpoint_t *setpoint,
                                          const uint32_t tick);
 void setMode(bool val);
 float getPsi(void);
+void setLoadPose(const poseMeasurement_t *measurement);
 #endif //__CONTROLLER_GEOM_H__

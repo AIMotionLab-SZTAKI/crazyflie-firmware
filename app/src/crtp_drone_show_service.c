@@ -45,6 +45,7 @@
 #include "stabilizer_types.h"
 #include "quatcompress.h"
 #include "crtp_localization_service.h"
+#include "controller_geom.h"
 
 #define DEBUG_MODULE "SHOW"
 #include "debug.h"
@@ -231,6 +232,7 @@ static void handleLoadPosePacket(CRTPPacket* pk) {
     // load_pose.stdDevQuat = 1;
     // estimatorEnqueuePose(&ext_pose);
     // tickOfLastPacket = xTaskGetTickCount();
+    setLoadPose(&load_pose);
   }
 }
 
