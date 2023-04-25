@@ -117,6 +117,8 @@ void controllerGeom(control_t *control, const setpoint_t *setpoint,
   //Position in m, velocity in m/s
   struct vec setpointPos = mkvec(setpoint->position.x, setpoint->position.y, setpoint->position.z);
   struct vec setpointVel = mkvec(setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z);
+  //struct vec setpointPos = mkvec(load_pose.x-0.4f, load_pose.y, load_pose.z-0.05f);
+  //struct vec setpointVel = vzero();
   struct vec statePos = mkvec(state->position.x, state->position.y, state->position.z);
   struct vec stateVel = mkvec(state->velocity.x, state->velocity.y, state->velocity.z);
 
