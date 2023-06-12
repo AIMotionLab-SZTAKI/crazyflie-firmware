@@ -343,6 +343,7 @@ static void droneShowTimer(xTimerHandle timer) {
     if (pmGetBatteryVoltage() < paramGetFloat(paramIds.pmCriticalLowVoltage) + 0.1f) {
       lowBatteryCounter++;
       if (lowBatteryCounter >= LOW_BATTERY_DURATION_MSEC / LOOP_INTERVAL_MSEC) {
+        DEBUG_PRINT("Drone voltage low!\n");
         setState(STATE_LANDING_LOW_BATTERY);
       }
     } else {

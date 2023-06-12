@@ -36,6 +36,7 @@
 #include "stabilizer.h"
 #include "supervisor.h"
 #include "platform_defaults.h"
+#include "debug.h"
 
 /* Minimum summed motor PWM that means we are flying */
 #define SUPERVISOR_FLIGHT_THRESHOLD 1000
@@ -48,10 +49,10 @@ static bool isFlying;
 static bool isTumbled;
 
 static bool isOutOfBox;
-static float box_x_low = -1.5;
-static float box_x_high = 1.5;
-static float box_y_low = -1.5;
-static float box_y_high = 1.5;
+static float box_x_low = -2.0;
+static float box_x_high = 2.0;
+static float box_y_low = -2.0;
+static float box_y_high = 2.0;
 static float box_z_low = -0.2;
 static float box_z_high = 1.7;
 
@@ -145,12 +146,14 @@ void supervisorUpdate(const sensorData_t *data, const state_t *state)
 
   isOutOfBox = isOutOfBoxCheck(state);
   if (isOutOfBox && isFlying) {
+    DEBUG_PRINT("Drone out of safe zone!\n");
     stabilizerSetEmergencyStop();
   }
 
 
   #if SUPERVISOR_TUMBLE_CHECK_ENABLE
   if (isTumbled && isFlying) {
+    DEBUG_PRINT("Drone tumbled!\n");
     stabilizerSetEmergencyStop();
   }
   #endif

@@ -440,6 +440,8 @@ LOG_ADD_CORE(LOG_FLOAT, roll, &setpoint.attitude.roll)
  */
 LOG_ADD_CORE(LOG_FLOAT, pitch, &setpoint.attitude.pitch)
 
+LOG_ADD_CORE(LOG_FLOAT, pitchRate, &setpoint.attitudeRate.pitch)
+
 /**
  * @brief Desired attitude rate, yaw rate [deg/s]
  */
