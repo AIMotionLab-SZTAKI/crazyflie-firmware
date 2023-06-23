@@ -1,0 +1,12 @@
+subdir-ccflags-y += -DNDEBUG
+subdir-ccflags-y += -I$(srctree)/app/vendor/libskybrush/include/
+
+obj-y += libskybrush/src/lights/colors.o
+obj-y += libskybrush/src/lights/commands.o
+obj-y += libskybrush/src/lights/error_handler.o
+obj-y += libskybrush/src/lights/executor.o
+obj-y += libskybrush/src/lights/loop_stack.o
+obj-y += libskybrush/src/lights/program.o
+obj-y += libskybrush/src/lights/transition.o
+obj-y += libskybrush/src/lights/trigger.o
+
