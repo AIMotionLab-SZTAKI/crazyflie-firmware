@@ -37,6 +37,7 @@ implementation of planning state machine
 */
 #include <stddef.h>
 #include "planner.h"
+#include "debug.h"
 
 static struct traj_eval plan_eval(struct planner *p, float t);
 
@@ -148,9 +149,11 @@ struct traj_eval plan_eval(struct planner *p, float t)
 
 int plan_takeoff(struct planner *p, struct vec curr_pos, float curr_yaw, float hover_height, float hover_yaw, float duration, float t)
 {
-	if (p->state != TRAJECTORY_STATE_IDLE) {
-		return 1;
-	}
+	//DEBUG_PRINT("p->state = %d \n", p->state);
+	// if highlevelcommander errors cause a trouble during takeoff, maybe take this out
+	//if (p->state != TRAJECTORY_STATE_IDLE) { 
+	//	return 1;
+	//}
 
 	plan_takeoff_or_landing(p, curr_pos, curr_yaw, hover_height, hover_yaw, duration);
 	p->reversed = false;
