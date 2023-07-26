@@ -27,8 +27,8 @@ const static float b = 0.025; // b/k to scale yaw
 
 static float kr = 1.0;
 static float kv = 0.35;
-static float kR = 0.01;
-static float kw = 0.0023;
+static float kR = 0.007;
+static float kw = 0.0015;
 
 
 static float pitch_q= 0.0;
