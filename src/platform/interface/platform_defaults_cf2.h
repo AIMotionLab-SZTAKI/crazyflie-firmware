@@ -34,8 +34,8 @@
 // Defines for default values in the cf2 platform
 
 // Default values for battery limits
-#define DEFAULT_BAT_LOW_VOLTAGE                   3.2f
-#define DEFAULT_BAT_CRITICAL_LOW_VOLTAGE          3.0f
+#define DEFAULT_BAT_LOW_VOLTAGE                   3.0f
+#define DEFAULT_BAT_CRITICAL_LOW_VOLTAGE          2.8f
 #define DEFAULT_BAT_LOW_DURATION_TO_TRIGGER_SEC   5
 
 // Default value for system shutdown in minutes after radio silence.

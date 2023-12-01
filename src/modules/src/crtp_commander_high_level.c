@@ -58,6 +58,8 @@ such as: take-off, landing, polynomial trajectories.
 #include "stabilizer_types.h"
 #include "stabilizer.h"
 
+#include "debug.h"
+
 // Local types
 enum TrajectoryLocation_e {
   TRAJECTORY_LOCATION_INVALID = 0,
@@ -81,7 +83,7 @@ struct trajectoryDescription
 // allocate memory to store trajectories
 // 4k allows us to store 31 poly4d pieces
 // other (compressed) formats might be added in the future
-#define TRAJECTORY_MEMORY_SIZE 4096
+#define TRAJECTORY_MEMORY_SIZE 8192
 
 #define ALL_GROUPS 0
 
@@ -631,7 +633,7 @@ int start_trajectory(const struct data_start_trajectory* data, float offset)
 
 int define_trajectory(const struct data_define_trajectory* data)
 {
-  if (data->trajectoryId >= NUM_TRAJECTORY_DEFINITIONS) {
+  if (data->trajectoryId >= NUM_TRAJECTORY_DEFINITIONS || data->description.trajectoryIdentifier.mem.offset % 4) {
     return ENOEXEC;
   }
   trajectory_descriptions[data->trajectoryId] = data->description;
