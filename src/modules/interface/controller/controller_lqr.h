@@ -3,6 +3,7 @@
 
 #include "stabilizer_types.h"
 
+void setLqrParams(float params[], int param_num, uint16_t timestamp);
 void controllerLqrInit(void);
 bool controllerLqrTest(void);
 void controllerLqrReset(void);
