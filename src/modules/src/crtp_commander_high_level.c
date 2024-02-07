@@ -359,7 +359,7 @@ bool crtpCommanderHighLevelGetSetpoint(setpoint_t* setpoint, const state_t *stat
     setpoint->acceleration.x = ev.acc.x;
     setpoint->acceleration.y = ev.acc.y;
     setpoint->acceleration.z = ev.acc.z;
-
+    setpoint->t_traj = (uint32_t)((t - planner.trajectory->t_begin) * 1000);
     // store the last setpoint
     pos = ev.pos;
     vel = ev.vel;

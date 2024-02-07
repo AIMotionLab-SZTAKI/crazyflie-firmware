@@ -12,6 +12,8 @@ LQR controller.
 #include "controller_lqr.h"
 #include "pm.h"
 #include "debug.h"
+#include "controller.h"
+#include "stdlib.h"
 
 
 // Logging variables
@@ -25,10 +27,15 @@ static float drone_mass = 0.032;
 
 static float K[4][12];
 
-static float K_timestamp;
+static uint32_t K_timestamp;
 static uint32_t traj_timestamp;
+static int32_t delay;
+static int32_t max_delay = 200;
+static uint32_t delay_ctr = 0;
+static uint32_t max_delay_time_ms = 200;
 
-// static float ex, ey, ez, evx, evy, evz, eyaw;
+
+static float ex, ey, ez; // evx, evy, evz, eyaw;
 
 // struct vec setpoint_rpy;
 
@@ -41,7 +48,7 @@ void setLqrParams(float params[], int param_num, uint16_t timestamp) {
       }
     }
   }
-  K_timestamp = (float)timestamp * 1000.0f; // convert ms to seconds
+  K_timestamp = timestamp;
 }
 
 void controllerLqrReset(void)
@@ -63,6 +70,11 @@ void controllerLqrReset(void)
   K[2][10] = 0.0015f; // 0.0025
   K[3][8] = 0.007f;
   K[3][11] = 0.0015f;
+
+  delay = 0;
+  delay_ctr=0;
+  K_timestamp = 0;
+  traj_timestamp = 0;
 }
 
 void controllerLqrInit(void)
@@ -93,8 +105,20 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
                             radians(setpoint->attitude.roll), radians(setpoint->attitude.pitch), radians(setpoint->attitude.yaw), 
                             radians(setpoint->attitudeRate.roll), radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw)};
 
-  traj_timestamp = setpoint->timestamp;
-
+  traj_timestamp = setpoint->t_traj;
+  delay = (int32_t)traj_timestamp - (int32_t)K_timestamp;  
+  if (setpoint->mode.z == modeDisable) {
+    delay = 0;
+  }
+  uint32_t delay_ctr_max = ATTITUDE_RATE * max_delay_time_ms / 1000;
+  if (abs(delay) > max_delay) {
+    delay_ctr++;
+    if (delay_ctr > delay_ctr_max) {
+      forceControllerType(ControllerTypePID);
+    }
+  } else {
+    delay_ctr=0;
+  }
   float wx = radians(sensors->gyro.x);
   float wy = radians(sensors->gyro.y);
   float wz = radians(sensors->gyro.z);
@@ -105,6 +129,10 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
   for (int i=0; i < 12; i++) {
     err_arr[i] = state_arr[i] - setpoint_arr[i];
   }
+
+  ex = err_arr[0];
+  ey = err_arr[1];
+  ez = err_arr[2];
 
   float eyaw = err_arr[8];
   while (eyaw > M_PI_F) {
@@ -149,6 +177,8 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
 
 PARAM_GROUP_START(Lqr)
 PARAM_ADD(PARAM_FLOAT, drone_mass, &drone_mass)
+PARAM_ADD(PARAM_INT32, max_delay, &max_delay)
+PARAM_ADD(PARAM_UINT32, max_delay_time_ms, &max_delay_time_ms)
 PARAM_GROUP_STOP(Lqr)
 
 
@@ -157,14 +187,16 @@ LOG_ADD(LOG_FLOAT, cmd_thrust_N, &cmd_thrust_N)
 LOG_ADD(LOG_FLOAT, cmd_pitch, &cmd_pitch)
 LOG_ADD(LOG_FLOAT, cmd_roll, &cmd_roll)
 LOG_ADD(LOG_UINT32, traj_timestamp, &traj_timestamp)
-LOG_ADD(LOG_FLOAT, K_0_0, &K[0][0])
-LOG_ADD(LOG_FLOAT, K_3_11, &K[3][11])
-LOG_ADD(LOG_FLOAT, K_timestamp, &K_timestamp)
-// LOG_ADD(LOG_FLOAT, ex, &ex)
+//LOG_ADD(LOG_FLOAT, K_0_0, &K[0][0])
+//LOG_ADD(LOG_FLOAT, K_3_11, &K[3][11])
+LOG_ADD(LOG_UINT32, K_timestamp, &K_timestamp)
+LOG_ADD(LOG_INT32, delay, &delay)
+LOG_ADD(LOG_UINT32, delay_ctr, &delay_ctr)
+LOG_ADD(LOG_FLOAT, ex, &ex)
 // LOG_ADD(LOG_FLOAT, evx, &evx)
-// LOG_ADD(LOG_FLOAT, ey, &ey)
+LOG_ADD(LOG_FLOAT, ey, &ey)
 // LOG_ADD(LOG_FLOAT, evy, &evy)
-// LOG_ADD(LOG_FLOAT, ez, &ez)
+LOG_ADD(LOG_FLOAT, ez, &ez)
 // LOG_ADD(LOG_FLOAT, evz, &evz)
 // LOG_ADD(LOG_FLOAT, eyaw, &eyaw)
 // LOG_ADD(LOG_FLOAT, sroll, &setpoint->att.x)
