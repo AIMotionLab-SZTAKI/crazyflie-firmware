@@ -47,6 +47,7 @@
 #include "crtp_localization_service.h"
 #include "controller_geom.h"
 #include "controller_lqr.h"
+#include "controller.h"
 
 #define DEBUG_MODULE "SHOW"
 #include "debug.h"
@@ -54,7 +55,6 @@
 #define CONTROL_CH 0
 #define LOAD_POSE_CH 1
 #define LQR_PARAMS_CH 2
-#define LQR_PARAM_NUM 48
 
 #define CMD_START  0
 #define CMD_PAUSE  1
@@ -218,33 +218,45 @@ static void droneShowSrvLoadPosePacket(CRTPPacket* pk) {
   crtpSendPacket(pk);  // ack
 }
 
-static uint8_t lqr_idx = 0;
-static float32_t K[LQR_PARAM_NUM] = {0.0f};
-static uint8_t num_lqr_packets = (uint8_t)(LQR_PARAM_NUM % 6) ? (uint8_t)(LQR_PARAM_NUM / 6 + 1): (uint8_t)(LQR_PARAM_NUM / 6); 
-static uint16_t lqr_timestamp;
+static bool all_true(bool* array, int len) {
+  for (int i=0; i<len; i++) {
+    if (!array[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
+static uint16_t lqr_timestamp = 0;
+static uint16_t lqr_param_num = 48; // in bumblebee, this is decided at runtime: 48 or 64
+static float32_t K[48] = {0.0f};  //in bumblebee, this is length 64
+static bool lqr_params_arrived[8] = {false, false, false, false, false, false, false, false}; //in bumblebee should be length 11
 
 static void handleLqrParamsPacket(CRTPPacket* pk) {
-  struct data_lqr_params data = *((struct data_lqr_params*)pk->data);
-  if (data.idx == 0) { // if data is the first packet for a parameter set
-      lqr_timestamp = data.timestamp; //save the parameter set's timestamp
-      lqr_idx = 0; 
+  ControllerType current_controller = controllerGetType();
+  if (current_controller != ControllerTypeLqr) {
+    return; // wrong controller -> disregard
   }
-  if (data.idx == lqr_idx && data.timestamp == lqr_timestamp) {  // if the packet is in order and has correct timestamp
-    //save its first LQR_PARAM_NUM elements (last few may not be needed based on how the packets were divided)
-    for (int i=0; i<6; i++) {
-        uint8_t K_idx = 6*lqr_idx + i; 
-        if (K_idx < LQR_PARAM_NUM)
-          K[K_idx] = data.params[i];
+  struct data_lqr_params data = *((struct data_lqr_params*)pk->data);
+  if (data.timestamp < lqr_timestamp) {
+    return; //we got some leftover parameter set from a previous K -> disregard
+  }
+  uint8_t num_lqr_packets = (uint8_t)(lqr_param_num % 6) ? (uint8_t)(lqr_param_num / 6 + 1): (uint8_t)(lqr_param_num / 6);
+  if (data.timestamp != lqr_timestamp) { //starting a new parameter set -> reset
+    lqr_timestamp = data.timestamp;
+    for (int i=0; i<num_lqr_packets; i++) { 
+      lqr_params_arrived[i] = false;
     }
-    if (lqr_idx < num_lqr_packets-1) {
-      lqr_idx++; // expect the next packet if current one wasn't the last
-    } else {
-      lqr_idx = 0;
-      setLqrParams(K, 48, data.timestamp);
-    }    
-  } else {
-    lqr_idx = 0;
+  }
+  for (int i=0; i<6; i++) {
+    uint8_t K_idx = data.idx*6+i;
+    if (K_idx < lqr_param_num) {
+      K[K_idx] = data.params[i];
+    }
+  }
+  lqr_params_arrived[data.idx] = true;
+  if (all_true(lqr_params_arrived, num_lqr_packets)) {
+    setLqrParams(K, 48, data.timestamp);
   }
 }
 
