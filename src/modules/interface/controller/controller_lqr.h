@@ -7,6 +7,7 @@ void setLqrParams(float params[], int param_num, uint16_t timestamp);
 void controllerLqrInit(void);
 bool controllerLqrTest(void);
 void controllerLqrReset(void);
+void lqrRegisterMemoryHandler(void);
 void controllerLqr(control_t *control, const setpoint_t *setpoint,
                                          const sensorData_t *sensors,
                                          const state_t *state,

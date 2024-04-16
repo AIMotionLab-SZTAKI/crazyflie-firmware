@@ -14,7 +14,37 @@ LQR controller.
 #include "debug.h"
 #include "controller.h"
 #include "stdlib.h"
+#include "mem.h"
 
+#define LQR_N 240 // 30kbyte=15360 uint16 param
+#define INT16_LQR_SCALING 32766
+
+
+static uint32_t duration = 0;
+float K_lim_memory[128+1]; //1 = 4 bytes for checksum
+int16_t K_memory[LQR_N*64+2]; //2 = 4 bytes for checksum
+//uint8_t K_lim_memory[128*4 + 4]; // 4 for checksum
+//uint8_t K_memory[LQR_N*64*2 + 4]; // 4 for checksum
+
+static uint32_t handleMemGetSize(void) {return sizeof(K_memory);}
+static bool handleMemRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer);
+static bool handleMemWrite(const uint32_t memAddr, const uint8_t writeLen, const uint8_t* buffer);
+static const MemoryHandlerDef_t memDef = {
+  .type = MEM_TYPE_LQR,
+  .getSize = handleMemGetSize,
+  .read = handleMemRead,
+  .write = handleMemWrite,
+};
+
+static uint32_t handleBoundsGetSize(void) {return sizeof(K_lim_memory);}
+static bool handleBoundsRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer);
+static bool handleBoundsWrite(const uint32_t memAddr, const uint8_t writeLen, const uint8_t* buffer);
+static const MemoryHandlerDef_t memDefBounds = {
+  .type = MEM_TYPE_LQR_BOUNDS,
+  .getSize = handleBoundsGetSize,
+  .read = handleBoundsRead,
+  .write = handleBoundsWrite,
+};
 
 // Logging variables
 
@@ -77,6 +107,11 @@ void controllerLqrReset(void)
   traj_timestamp = 0;
 }
 
+void lqrRegisterMemoryHandler(void) {
+  memoryRegisterHandler(&memDef);
+  memoryRegisterHandler(&memDefBounds);
+}
+
 void controllerLqrInit(void)
 {
   controllerLqrReset();
@@ -104,8 +139,22 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
   float setpoint_arr[12] = {setpoint->position.x, setpoint->position.y, setpoint->position.z, setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z,
                             radians(setpoint->attitude.roll), radians(setpoint->attitude.pitch), radians(setpoint->attitude.yaw), 
                             radians(setpoint->attitudeRate.roll), radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw)};
-
   traj_timestamp = setpoint->t_traj;
+  // Compute the current LQR gain matrix by linear interpolation between adjacent values,
+  // Then uncompress the compressed matrix using the bounds in K_lim_memory
+  float param_progress = (float)traj_timestamp / (float)duration * LQR_N;
+  int16_t ta = (int16_t)param_progress * 64;
+  int16_t tb = ta + 64;
+  for (int i=0; i<4; i++) {
+    for (int j=0; j<12; j++) {
+      float wa = (param_progress - (float)ta / 64.0f) / LQR_N;
+      float K_elem_normed =  wa * (float)K_memory[2 + ta + 12*i + j] + (1-wa) * (float)K_memory[2 + tb + 12*i + j]; //2+... because of crc
+      float K_lb = K_lim_memory[1+12*i+j]; //1+... because of crc
+      float K_ub = K_lim_memory[1+64 + 12*i+j]; //1+... because of crc
+      K[i][j] = (K_ub - K_lb) / 2 * K_elem_normed / (float)INT16_LQR_SCALING + (K_ub + K_lb) / 2;
+    }
+  }
+  
   delay = (int32_t)traj_timestamp - (int32_t)K_timestamp;  
   if (setpoint->mode.z == modeDisable) {
     delay = 0;
@@ -113,7 +162,7 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
   uint32_t delay_ctr_max = ATTITUDE_RATE * max_delay_time_ms / 1000;
   if (abs(delay) > max_delay) {
     delay_ctr++;
-    if (delay_ctr > delay_ctr_max) {
+    if (delay_ctr > delay_ctr_max && !duration) {
       forceControllerType(ControllerTypePID);
     }
   } else {
@@ -174,11 +223,54 @@ void controllerLqr(control_t *control, const setpoint_t *setpoint,
   }
 }
 
+static bool handleMemRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer) {
+  bool result = false;
+  if (memAddr + readLen <= sizeof(K_memory)) {
+    uint8_t* K_memory_uint8 = (uint8_t*)(K_memory);
+    memcpy(buffer, K_memory_uint8+memAddr, readLen);
+    result = true;
+  }
+
+  return result;
+}
+
+static bool handleMemWrite(const uint32_t memAddr, const uint8_t writeLen, const uint8_t* buffer) {
+  bool result = false;
+  if ((memAddr + writeLen) <= sizeof(K_memory)) {
+    uint8_t* K_memory_uint8 = (uint8_t*)(K_memory);
+    memcpy(K_memory_uint8+memAddr, buffer, writeLen);
+    result = true;
+  }
+  return result;
+}
+
+static bool handleBoundsRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer) {
+  bool result = false;
+  if (memAddr + readLen <= sizeof(K_lim_memory)) {
+    uint8_t* K_lim_memory_uint8 = (uint8_t*)K_lim_memory;
+    memcpy(buffer, K_lim_memory_uint8+memAddr, readLen);
+    result = true;
+  }
+
+  return result;
+}
+
+static bool handleBoundsWrite(const uint32_t memAddr, const uint8_t writeLen, const uint8_t* buffer) {
+  bool result = false;
+  if ((memAddr + writeLen) <= sizeof(K_lim_memory)) {
+    uint8_t* K_lim_memory_uint8 = (uint8_t*)K_lim_memory;
+    memcpy(K_lim_memory_uint8 + memAddr, buffer, writeLen);
+    result = true;
+  }
+  return result;
+}
+
 
 PARAM_GROUP_START(Lqr)
 PARAM_ADD(PARAM_FLOAT, drone_mass, &drone_mass)
 PARAM_ADD(PARAM_INT32, max_delay, &max_delay)
 PARAM_ADD(PARAM_UINT32, max_delay_time_ms, &max_delay_time_ms)
+PARAM_ADD(PARAM_UINT32, duration, &duration)
 PARAM_GROUP_STOP(Lqr)
 
 
