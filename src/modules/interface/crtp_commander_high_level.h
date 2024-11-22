@@ -262,4 +262,6 @@ bool crtpCommanderHighLevelIsTrajectoryFinished();
  */
 bool crtpCommanderHighLevelMatchesGroupMask(uint8_t g);
 
+void mpcGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick);
+
 #endif /* CRTP_COMMANDER_HIGH_LEVEL_H_ */

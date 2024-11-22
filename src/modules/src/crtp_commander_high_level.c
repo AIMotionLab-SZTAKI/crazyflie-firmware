@@ -304,6 +304,73 @@ int crtpCommanderHighLevelDisable()
   return 0;
 }
 
+static void runNeuralNetwork(setpoint_t* setpoint, velocity_t V, quaternion_t q, point_t* p) {
+  // TODO
+}
+
+static struct traj_eval evalAtParam(float pathParam) {
+  	int cursor = 0;
+    const struct piecewise_traj *traj = planner.trajectory;
+    while (cursor < traj->n_pieces) {
+      struct poly4d const *piece = &(traj->pieces[cursor]);
+      if (pathParam <= piece->duration * traj->timescale) {
+        return poly4d_eval(piece, pathParam);
+      }
+      pathParam -= piece->duration * traj->timescale;
+      ++cursor;
+    }
+    // if we get here, the trajectory has ended
+    struct poly4d const *end_piece = &(traj->pieces[traj->n_pieces - 1]);
+    struct traj_eval ev = poly4d_eval(end_piece, end_piece->duration);
+    ev.pos = vadd(ev.pos, traj->shift);
+    ev.vel = vzero();
+    ev.acc = vzero();
+    ev.omega = vzero();
+    return ev;
+}
+
+static point_t getTrajPoint(float pathParam) {
+  // In piecewise_eval, it is presumed that the second argument is the actual time,
+  // and so traj->t_begin will be substracted from it. We're not using time here,
+  // but rather a path parameter, which begins from 0, so instead of pathParam,
+  // we pass pathParam+time. Might want to make our own function maybe to avoid this.
+  struct traj_eval ev;
+  if (planner.type == TRAJECTORY_TYPE_PIECEWISE) { // only non-compressed for now
+    ev = evalAtParam(pathParam);
+  } else {
+    ev = traj_eval_invalid();
+  }
+  point_t p = {ev.pos.x, ev.pos.y, ev.pos.z};
+  return p;
+}
+
+static float getClosestPathParam(const state_t *state) {
+  // TODO
+  float pathParam = planner.trajectory->t_begin - usecTimestamp() / 1e6f; 
+  if (pathParam >= piecewise_duration(planner.trajectory)) {
+    pathParam = piecewise_duration(planner.trajectory);
+  }
+  return pathParam;
+} 
+
+void mpcGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick) {
+  // should set the setpoint to be used for the attitude rate control:
+  // project position onto reference -> get closes path reference
+  // determine sampled points (evenly spaced between current path reference and reachable)
+  // run neural network -> angular velocity and thrust can be set in setpoint
+  
+  float d = 0.1; // path param diff between points
+  point_t points[5];
+  if (planner.type == TRAJECTORY_TYPE_PIECEWISE) { // only non-compressed for now
+    float closest = getClosestPathParam(state);
+    for (int i=0; i<5; i++) {
+      float pathParam = closest + i*d;
+      points[i] = getTrajPoint(pathParam);
+    }
+    runNeuralNetwork(setpoint, state->velocity, state->attitudeQuaternion, points);
+  }
+}
+
 bool crtpCommanderHighLevelGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick)
 {
   if (!RATE_DO_EXECUTE(RATE_HL_COMMANDER, tick)) {

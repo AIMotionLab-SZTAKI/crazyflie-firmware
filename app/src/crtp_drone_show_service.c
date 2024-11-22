@@ -46,7 +46,6 @@
 #include "quatcompress.h"
 #include "crtp_localization_service.h"
 #include "controller_geom.h"
-#include "controller_lqr.h"
 #include "controller.h"
 
 #define DEBUG_MODULE "SHOW"
@@ -218,57 +217,6 @@ static void droneShowSrvLoadPosePacket(CRTPPacket* pk) {
   crtpSendPacket(pk);  // ack
 }
 
-static bool all_true(bool* array, int len) {
-  for (int i=0; i<len; i++) {
-    if (!array[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-static uint16_t lqr_timestamp = 0;
-static uint16_t lqr_param_num = 48; // in bumblebee, this is decided at runtime: 48 or 64
-static float32_t K[48] = {0.0f};  //in bumblebee, this is length 64
-static bool lqr_params_arrived[8] = {false, false, false, false, false, false, false, false}; //in bumblebee should be length 11
-
-static void handleLqrParamsPacket(CRTPPacket* pk) {
-  ControllerType current_controller = controllerGetType();
-  if (current_controller != ControllerTypeLqr) {
-    return; // wrong controller -> disregard
-  }
-  struct data_lqr_params data = *((struct data_lqr_params*)pk->data);
-  if (data.timestamp < lqr_timestamp) {
-    return; //we got some leftover parameter set from a previous K -> disregard
-  }
-  uint8_t num_lqr_packets = (uint8_t)(lqr_param_num % 6) ? (uint8_t)(lqr_param_num / 6 + 1): (uint8_t)(lqr_param_num / 6);
-  if (data.timestamp != lqr_timestamp) { //starting a new parameter set -> reset
-    lqr_timestamp = data.timestamp;
-    for (int i=0; i<num_lqr_packets; i++) { 
-      lqr_params_arrived[i] = false;
-    }
-  }
-  for (int i=0; i<6; i++) {
-    uint8_t K_idx = data.idx*6+i;
-    if (K_idx < lqr_param_num) {
-      K[K_idx] = data.params[i];
-    }
-  }
-  lqr_params_arrived[data.idx] = true;
-  if (all_true(lqr_params_arrived, num_lqr_packets)) {
-    setLqrParams(K, 48, data.timestamp);
-  }
-}
-
-
-static void droneShowSrvLqrParamsPacket(CRTPPacket* pk) {
-  if (pk->size < 1) {
-    return;
-  }
-  handleLqrParamsPacket(pk); 
-  //crtpSendPacket(pk); // send ack
-}
-
 static void droneShowSrvCrtpCB(CRTPPacket* pk) {
   switch (pk->channel) {
     case CONTROL_CH:
@@ -276,9 +224,6 @@ static void droneShowSrvCrtpCB(CRTPPacket* pk) {
       break;
     case LOAD_POSE_CH:
       droneShowSrvLoadPosePacket(pk);
-      break;
-    case LQR_PARAMS_CH:
-      droneShowSrvLqrParamsPacket(pk);
       break;
   }
 }

@@ -296,6 +296,12 @@ static void stabilizerTask(void* param)
 
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
+      if (controllerType == ControllerTypeMpc) {
+        if (RATE_DO_EXECUTE(20, tick)) {
+          mpcGetSetpoint(&setpoint, &state, tick);
+        }        
+      }
+
       controller(&control, &setpoint, &sensorData, &state, tick);
 
       checkEmergencyStopTimeout();
