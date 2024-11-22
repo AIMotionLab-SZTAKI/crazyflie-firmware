@@ -353,19 +353,27 @@ static float getClosestPathParam(const state_t *state) {
   return pathParam;
 } 
 
+float reachableParameter(const state_t *state, float currentPathParam) {
+  return 0.5; // TODO
+}
+
 void mpcGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick) {
   // should set the setpoint to be used for the attitude rate control:
   // project position onto reference -> get closes path reference
   // determine sampled points (evenly spaced between current path reference and reachable)
   // run neural network -> angular velocity and thrust can be set in setpoint
   
-  float d = 0.1; // path param diff between points
+  float closest = getClosestPathParam(state);
+  float d = (reachableParameter(state, closest) - closest)/6; // path param diff between points
   point_t points[5];
   if (planner.type == TRAJECTORY_TYPE_PIECEWISE) { // only non-compressed for now
-    float closest = getClosestPathParam(state);
     for (int i=0; i<5; i++) {
-      float pathParam = closest + i*d;
-      points[i] = getTrajPoint(pathParam);
+      float pathParam = closest + (i+1)*d;
+      point_t posAtParam = getTrajPoint(pathParam);
+      point_t pos = state->position;
+      points[i].x = posAtParam.x - pos.x;
+      points[i].y = posAtParam.y-pos.y;
+      points[i].z = posAtParam.z-pos.z;
     }
     runNeuralNetwork(setpoint, state->velocity, state->attitudeQuaternion, points);
   }
