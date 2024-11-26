@@ -1,0 +1,4 @@
+obj-y += controller_koopman.o
+obj-y += utils.o
+obj-y += inner_loop/
+obj-y += outer_loop/

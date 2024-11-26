@@ -8,7 +8,7 @@
 #include "controller_indi.h"
 #include "controller_brescianini.h"
 #include "controller_geom.h"
-#include "controller_lqr.h"
+#include "controller_koopman.h"
 
 #include "autoconf.h"
 
@@ -31,7 +31,7 @@ static ControllerFcns controllerFunctions[] = {
   {.init = controllerINDIInit, .test = controllerINDITest, .update = controllerINDI, .name = "INDI"},
   {.init = controllerBrescianiniInit, .test = controllerBrescianiniTest, .update = controllerBrescianini, .name = "Brescianini"},
   {.init = controllerGeomInit, .test = controllerGeomTest, .update = controllerGeom, .name = "Geom"},
-  {.init = controllerLqrInit, .test = controllerLqrTest, .update = controllerLqr, .name = "LQR"},
+  {.init = controllerKoopmanInit, .test = controllerKoopmanTest, .update = controllerKoopman, .name = "Koopman"},
 };
 
 
@@ -54,8 +54,8 @@ void controllerInit(ControllerType controller) {
     #define CONTROLLER ControllerTypeMellinger
   #elif defined(CONFIG_CONTROLLER_BRESCIANINI)
     #define CONTROLLER ControllerTypeBrescianini
-  #elif defined(CONFIG_CONTROLLER_LQR)
-    #define CONTROLLER ControllerTypeLqr
+  #elif defined(CONFIG_CONTROLLER_KOOPMAN)
+    #define CONTROLLER ControllerTypeKoopman
   #else
     #define CONTROLLER ControllerTypeAutoSelect
   #endif

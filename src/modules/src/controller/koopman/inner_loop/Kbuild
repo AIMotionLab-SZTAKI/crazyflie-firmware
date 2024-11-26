@@ -1,0 +1,5 @@
+obj-y += controller_data.o
+obj-y += inner_loop_lpv.o
+obj-y += interpolate.o
+obj-y += network_evaluate.o
+obj-y += network_params.o
