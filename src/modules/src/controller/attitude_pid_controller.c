@@ -149,7 +149,6 @@ void attitudeControllerCorrectRatePID(
   pitchOutput = saturateSignedInt16(pidUpdate(&pidPitchRate, pitchRateActual, true));
 
   pidSetDesired(&pidYawRate, yawRateDesired);
-
   yawOutput = saturateSignedInt16(pidUpdate(&pidYawRate, yawRateActual, true));
 }
 

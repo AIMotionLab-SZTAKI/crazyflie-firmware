@@ -57,6 +57,8 @@
 #include "static_mem.h"
 #include "rateSupervisor.h"
 
+#include "controller_mpc.h"
+
 static float voltage = 0.0;
 
 static bool isInit;
@@ -70,6 +72,9 @@ static setpoint_t setpoint;
 static sensorData_t sensorData;
 static state_t state;
 static control_t control;
+
+static setpoint_t testSetpoint;
+static control_t testControl;
 
 static motors_thrust_uncapped_t motorThrustUncapped;
 static motors_thrust_uncapped_t motorThrustBatCompUncapped;
@@ -287,20 +292,23 @@ static void stabilizerTask(void* param)
       stateEstimator(&state, tick);
       compressState();
 
-      if (controllerType == ControllerTypeMpc && RATE_DO_EXECUTE(20, tick)) {
-        mpcGetSetpoint(&setpoint, &state, tick);
-      } else {
-        if (crtpCommanderHighLevelGetSetpoint(&tempSetpoint, &state, tick)) {
-          commanderSetSetpoint(&tempSetpoint, COMMANDER_PRIORITY_HIGHLEVEL);
-        }
-        commanderGetSetpoint(&setpoint, &state);        
-      }      
+      if (crtpCommanderHighLevelGetSetpoint(&tempSetpoint, &state, tick)) {
+        commanderSetSetpoint(&tempSetpoint, COMMANDER_PRIORITY_HIGHLEVEL);
+      }
+      commanderGetSetpoint(&setpoint, &state); 
       
       compressSetpoint();
 
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
       controller(&control, &setpoint, &sensorData, &state, tick);
+
+
+      if (RATE_DO_EXECUTE(RATE_25_HZ, tick)) {
+        controllerMpcInit();
+        mpcGetSetpoint(&testSetpoint, &state, tick);
+      }
+      controllerMpc(&testControl, &testSetpoint, &sensorData, &state, tick);
 
       checkEmergencyStopTimeout();
 
@@ -674,7 +682,14 @@ LOG_ADD_CORE(LOG_FLOAT, z, &sensorData.mag.z)
 LOG_GROUP_STOP(mag)
 
 LOG_GROUP_START(controller)
-LOG_ADD(LOG_INT16, ctr_yaw, &control.yaw)
+LOG_ADD(LOG_INT16, roll, &control.roll)
+LOG_ADD(LOG_INT16, pitch, &control.pitch)
+LOG_ADD(LOG_INT16, yaw, &control.yaw)
+LOG_ADD(LOG_FLOAT, thrust, &control.thrust)
+LOG_ADD(LOG_INT16, mpcRoll, &testControl.roll)
+LOG_ADD(LOG_INT16, mpcPitch, &testControl.pitch)
+LOG_ADD(LOG_INT16, mpcYaw, &testControl.yaw)
+LOG_ADD(LOG_FLOAT, mpcThrust, &testControl.thrust)
 LOG_GROUP_STOP(controller)
 
 /**

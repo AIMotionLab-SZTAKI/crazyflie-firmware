@@ -15,7 +15,8 @@ MPC controller.
 #include "controller.h"
 #include "stdlib.h"
 #include "mem.h"
-#include "attitude_controller.h"
+#include "pid.h"
+#include "platform_defaults.h"
 
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 
@@ -26,14 +27,94 @@ static float cmd_roll;
 static float cmd_pitch;
 static float cmd_yaw;
 
-void controllerMpcReset(void) {
-  //No integral part to reset
+static bool rateFiltEnable = ATTITUDE_RATE_LPF_ENABLE;
+static float omxFiltCutoff = ATTITUDE_ROLL_RATE_LPF_CUTOFF_FREQ;
+static float omyFiltCutoff = ATTITUDE_PITCH_RATE_LPF_CUTOFF_FREQ;
+static float omzFiltCutoff = ATTITUDE_YAW_RATE_LPF_CUTOFF_FREQ;
+
+static inline int16_t saturateSignedInt16(float in)
+{
+  // don't use INT16_MIN, because later we may negate it, which won't work for that value.
+  if (in > INT16_MAX)
+    return INT16_MAX;
+  else if (in < -INT16_MAX)
+    return -INT16_MAX;
+  else
+    return (int16_t)in;
 }
+
+PidObject mpcRollRate = {
+  .kp = PID_ROLL_RATE_KP,
+  .ki = PID_ROLL_RATE_KI,
+  .kd = PID_ROLL_RATE_KD,
+  .kff = PID_ROLL_RATE_KFF,
+};
+
+PidObject mpcPitchRate = {
+  .kp = PID_PITCH_RATE_KP,
+  .ki = PID_PITCH_RATE_KI,
+  .kd = PID_PITCH_RATE_KD,
+  .kff = PID_PITCH_RATE_KFF,
+};
+
+PidObject mpcYawRate = {
+  .kp = PID_YAW_RATE_KP,
+  .ki = PID_YAW_RATE_KI,
+  .kd = PID_YAW_RATE_KD,
+  .kff = PID_YAW_RATE_KFF,
+};
+
+static int16_t rollOutput;
+static int16_t pitchOutput;
+static int16_t yawOutput;
+
+static bool isInit;
+
+static void mpcReset(void)
+{
+  pidReset(&mpcRollRate);
+  pidReset(&mpcPitchRate);
+  pidReset(&mpcYawRate);
+}
+
+static void attitudeControllerCorrectRatePID(
+       float rollRateActual, float pitchRateActual, float yawRateActual,
+       float rollRateDesired, float pitchRateDesired, float yawRateDesired)
+{
+  pidSetDesired(&mpcRollRate, rollRateDesired);
+  rollOutput = saturateSignedInt16(pidUpdate(&mpcRollRate, rollRateActual, true));
+
+  pidSetDesired(&mpcPitchRate, pitchRateDesired);
+  pitchOutput = saturateSignedInt16(pidUpdate(&mpcPitchRate, pitchRateActual, true));
+
+  pidSetDesired(&mpcYawRate, yawRateDesired);
+  yawOutput = saturateSignedInt16(pidUpdate(&mpcYawRate, yawRateActual, true));
+}
+
+static void attitudeControllerGetActuatorOutput(int16_t* roll, int16_t* pitch, int16_t* yaw)
+{
+  *roll = rollOutput;
+  *pitch = pitchOutput;
+  *yaw = yawOutput;
+}
+
 
 void controllerMpcInit(void)
 {
-  attitudeControllerInit(ATTITUDE_UPDATE_DT);
-  controllerMpcReset();
+  if(isInit)
+  return;
+  pidInit(&mpcRollRate,  0, mpcRollRate.kp,  mpcRollRate.ki,  mpcRollRate.kd,
+       mpcRollRate.kff,  ATTITUDE_UPDATE_DT, ATTITUDE_RATE, omxFiltCutoff, rateFiltEnable);
+  pidInit(&mpcPitchRate, 0, mpcPitchRate.kp, mpcPitchRate.ki, mpcPitchRate.kd,
+       mpcPitchRate.kff, ATTITUDE_UPDATE_DT, ATTITUDE_RATE, omyFiltCutoff, rateFiltEnable);
+  pidInit(&mpcYawRate,   0, mpcYawRate.kp,   mpcYawRate.ki,   mpcYawRate.kd,
+       mpcYawRate.kff,   ATTITUDE_UPDATE_DT, ATTITUDE_RATE, omzFiltCutoff, rateFiltEnable);
+
+  pidSetIntegralLimit(&mpcRollRate,  PID_ROLL_RATE_INTEGRATION_LIMIT);
+  pidSetIntegralLimit(&mpcPitchRate, PID_PITCH_RATE_INTEGRATION_LIMIT);
+  pidSetIntegralLimit(&mpcYawRate,   PID_YAW_RATE_INTEGRATION_LIMIT);
+  isInit = true;
+  mpcReset();
 }
 
 bool controllerMpcTest(void)
@@ -79,7 +160,7 @@ void controllerMpc(control_t *control, const setpoint_t *setpoint,
     cmd_pitch = control->pitch;
     cmd_yaw = control->yaw;
 
-    attitudeControllerResetAllPID();
+    mpcReset();
   }
 }
 

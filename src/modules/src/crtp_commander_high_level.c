@@ -428,14 +428,13 @@ float hard_tanh(float x)
 
 
 static void runNeuralNetwork(setpoint_t* setpoint, velocity_t V, quaternion_t q, point_t* p) {
-
   // TODO
   float state_array[22] = {V.x, V.y, V.z, q.w, q.x, q.y, q.z,
-   0, 0, 0, // p1
-   0, 0, 0, // p2
-   0, 0, 0, // p3
-   0, 0, 0, // p4
-   0, 0, 0}; // p5
+   p[0].x, p[0].y, p[0].z, // p1
+   p[1].x, p[1].y, p[1].z, // p2
+   p[2].x, p[2].y, p[2].z, // p3
+   p[3].x, p[3].y, p[3].z, // p4
+   p[4].x, p[4].y, p[4].z}; // p5
   
 
   // input layer 22->32
@@ -487,10 +486,11 @@ static void runNeuralNetwork(setpoint_t* setpoint, velocity_t V, quaternion_t q,
       output_3[i] = hard_tanh(output_3[i]);
 		}
 		
-		setpoint->thrust = output_3[0] + output_residual[0];
-		setpoint->attitudeRate.roll = output_3[1] + output_residual[1];
-		setpoint->attitudeRate.pitch = output_3[2] + output_residual[2];
-		setpoint->attitudeRate.yaw = output_3[3] + output_residual[3];
+    // TODO: scale thrust
+		setpoint->thrust = (output_3[0] + output_residual[0]/10.0f)*13200;
+		setpoint->attitudeRate.roll = degrees(output_3[1] + output_residual[1]);
+		setpoint->attitudeRate.pitch = degrees(output_3[2] + output_residual[2]);
+		setpoint->attitudeRate.yaw = degrees(output_3[3] + output_residual[3]);
 }
 
 static struct traj_eval evalAtParam(float pathParam) {
@@ -545,7 +545,7 @@ static float getClosestPathParam(const state_t *state, const float prevParam, co
   float runningParam = prevParam;
   float mind2 = distanceSquare(state, prevParam);  
   float d2 = distanceSquare(state, runningParam);  
-  for (int i=1; i<50; i++) {
+  for (int i=1; i<n; i++) {
     runningParam += delta;
     d2 = distanceSquare(state, runningParam);  
     if (d2 < mind2) {
@@ -574,6 +574,12 @@ void mpcGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick) {
   // project position onto reference -> get closes path reference
   // determine sampled points (evenly spaced between current path reference and reachable)
   // run neural network -> angular velocity and thrust can be set in setpoint
+
+  if (plan_is_disabled(&planner) || plan_is_stopped(&planner)) {
+    *setpoint = nullSetpoint;
+    return;
+  }
+
   if (usecTimestamp() / 1e6f <= planner.trajectory -> t_begin + 0.1f) {
     currentParam = 0;
   } 
