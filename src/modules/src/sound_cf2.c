@@ -332,7 +332,7 @@ static void soundTimer(xTimerHandle timer)
   }
 
   if (effect > neffect) {
-    DEBUG_PRINT("Bad value for effect (> neffect)\n");
+    DEBUG_PRINT("Bad value for sound effect %d (> neffect)\n", effect);
     effect = SND_OFF;
   }
 

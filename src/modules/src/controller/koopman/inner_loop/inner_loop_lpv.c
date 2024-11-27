@@ -1,26 +1,29 @@
 #include "controller_koopman.h"
 
 // Static variables for persistent filter states and control input
-static float filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-static float u_normed_prev[4] = {0.0, 0.0, 0.0, 0.0};
-static float target_state_normed_prev[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float u_normed_prev[4] = {0.0, 0.0, 0.0, 0.0};
+float target_state_normed_prev[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+float performance_ch_error[4];                 // Error vector
+float filter_input[8];          // Filter input
+float temp_result[8];           // Temporary storage for matrix-vector results
+float normalized_cur_state[9];      // Normalized x_lpv
+float normalized_target_state[9];   // Normalized target state
+float subnet_cur_states[40];    // Subnet states estimated by encoder
+float target_subnet_states[40]; // Subnet states for the target
+float full_cur_state[48];        // Full state estimate
+float e[40];                    // Error vector for Koopman state estimation
+float p[np];                     // Scheduling variable
+float u_normed[4];              // Normalized control input
+float B_result[8];               // Temporary storage for matrix-vector results
+float target_filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // Target filter states
+float K[nu][nx_full];           // Feedback gain matrix
 
 void inner_loop_lpv(const float *current_state, const float *target_state, float *u) {
-    // Temporary variables for intermediate calculations
-    float performance_ch_error[4];                 // Error vector
-    float filter_input[8];          // Filter input
-    float temp_result[8];           // Temporary storage for matrix-vector results
-    float normalized_cur_state[9];      // Normalized x_lpv
-    float normalized_target_state[9];   // Normalized target state
-    float subnet_cur_states[40];    // Subnet states estimated by encoder
-    float target_subnet_states[40]; // Subnet states for the target
-    float full_cur_state[48];        // Full state estimate
-    float e[40];                    // Error vector for Koopman state estimation
-    float p[np];                     // Scheduling variable
-    float u_normed[4];              // Normalized control input
-    float B_result[8];               // Temporary storage for matrix-vector results
-    float target_filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // Target filter states
-    float K[nu][nx_full];           // Feedback gain matrix
+    for (int i=0; i<8; i++) {
+        target_filter_states[i] = 0.0;
+    }
 
     // Normalize the current state: (current_state - y0) ./ ystd
     vector_normalize(current_state, y0_, ystd, normalized_cur_state, 9);

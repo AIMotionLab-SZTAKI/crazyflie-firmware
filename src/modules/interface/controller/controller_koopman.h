@@ -46,6 +46,10 @@ extern float layer_1_weight[NUM_NEURONS][NUM_NEURONS];
 extern float layer_1_bias[NUM_NEURONS];
 extern float layer_2_weight[NUM_NEURONS][nkoop];
 extern float layer_2_bias[nkoop];
+extern float integral[3];
+extern float filter_states[8];
+extern float u_normed_prev[4];
+extern float target_state_normed_prev[9];
 
 void setKoopmanParams(float params[], int param_num, uint16_t timestamp);
 void controllerKoopmanInit(void);

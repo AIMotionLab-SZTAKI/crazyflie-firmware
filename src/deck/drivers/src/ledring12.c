@@ -1040,7 +1040,7 @@ void ledring12Worker(void * data)
 
   if (current_effect > neffect) {
     current_effect = 0;
-    DEBUG_PRINT("Bad value for effect (> neffect)\n");
+    DEBUG_PRINT("Bad value for led effect %d (> neffect)\n", current_effect);
   }
 
   effectsFct[current_effect](buffer, reset);

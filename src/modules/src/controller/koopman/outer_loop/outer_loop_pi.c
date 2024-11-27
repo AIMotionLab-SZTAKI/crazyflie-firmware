@@ -1,6 +1,6 @@
 #include "controller_koopman.h"
 
-static float integral[3] = {0.0, 0.0, 0.0};  // Integral state for x, y, z
+float integral[3] = {0.0, 0.0, 0.0};  // Integral state for x, y, z
 
 void outer_loop_pi(float *current_pos, float *desired_pos, float *target_vel) {
     float dt = 0.1; // Time step

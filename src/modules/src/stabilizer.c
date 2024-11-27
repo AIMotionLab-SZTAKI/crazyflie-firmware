@@ -57,6 +57,8 @@
 #include "static_mem.h"
 #include "rateSupervisor.h"
 
+#include "controller_koopman.h"
+
 static float voltage = 0.0;
 
 static bool isInit;
@@ -70,6 +72,8 @@ static setpoint_t setpoint;
 static sensorData_t sensorData;
 static state_t state;
 static control_t control;
+
+static control_t koopmanControl;
 
 static motors_thrust_uncapped_t motorThrustUncapped;
 static motors_thrust_uncapped_t motorThrustBatCompUncapped;
@@ -297,6 +301,9 @@ static void stabilizerTask(void* param)
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
       controller(&control, &setpoint, &sensorData, &state, tick);
+
+      controllerKoopmanInit();
+      controllerKoopman(&koopmanControl, &setpoint, &sensorData, &state, tick);
 
       checkEmergencyStopTimeout();
 
@@ -671,6 +678,8 @@ LOG_GROUP_STOP(mag)
 
 LOG_GROUP_START(controller)
 LOG_ADD(LOG_INT16, ctr_yaw, &control.yaw)
+LOG_ADD(LOG_INT16, ctr_roll, &control.roll)
+LOG_ADD(LOG_INT16, ctr_pitch, &control.pitch)
 LOG_GROUP_STOP(controller)
 
 /**

@@ -8,6 +8,7 @@ static float output_1[NUM_NEURONS];
 static float output_2[NUM_OUTPUTS];
 static float residual_output[NUM_OUTPUTS];
 
+#if 0
 float linear(float num) {
 	return num;
 }
@@ -18,9 +19,10 @@ float sigmoid(float num) {
 }
 
 
-// float tanh(float num) {
-// 	return (exp(2*num) - 1) / (exp(2*num) + 1);
-// }
+double tanh(double num) {
+	return (exp(2*num) - 1) / (exp(2*num) + 1);
+}
+#endif
 
 float relu(float num) {
 	if (num > 0) {
@@ -38,7 +40,7 @@ void network_evaluate(float *phys_state, float *koop_state) {
 			output_0[i] += phys_state[j] * layer_0_weight[j][i];
 		}
 		output_0[i] += layer_0_bias[i];
-		output_0[i] = tanh(output_0[i]);
+		output_0[i] = relu(output_0[i]);
 	}
 
 	for (int i = 0; i < structure[1][1]; i++) {
@@ -47,7 +49,7 @@ void network_evaluate(float *phys_state, float *koop_state) {
 			output_1[i] += output_0[j] * layer_1_weight[j][i];
 		}
 		output_1[i] += layer_1_bias[i];
-		output_1[i] = tanh(output_1[i]);
+		output_1[i] = relu(output_1[i]);
 	}
 	
 	for (int i = 0; i < structure[2][1]; i++) {
