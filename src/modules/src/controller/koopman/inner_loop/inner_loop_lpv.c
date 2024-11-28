@@ -83,5 +83,11 @@ void inner_loop_lpv(const float *current_state, const float *target_state, float
 
     // Update the previous target state
     vector_copy(normalized_target_state, target_state_normed_prev, 9);
+
+    // set filter states to 0
+    for (int i=0; i<8; i++) {
+        filter_states[i] = 0.0;
+    }
+    // filter_states = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     
 }
