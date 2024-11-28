@@ -6,7 +6,7 @@
 // Hardcoded feedback gains and scheduling points
 #define nkoop 40
 #define nz 8
-#define grid_point_num 10
+#define grid_point_num 50
 #define nx_full 48
 #define nu 4
 #define np 6
@@ -33,7 +33,7 @@ extern float Kp[3][3];
 extern float Ki[3][3];
 
 #define NUM_LAYERS 3
-#define NUM_NEURONS 50
+#define NUM_NEURONS 45
 #define NUM_INPUTS 9
 #define NUM_OUTPUTS nkoop
 
