@@ -529,6 +529,18 @@ LOG_GROUP_STOP(ctrltargetZ)
  */
 LOG_GROUP_START(stabilizer)
 
+LOG_ADD(LOG_INT16, roll, &control.roll)
+LOG_ADD(LOG_INT16, pitch, &control.pitch)
+LOG_ADD(LOG_INT16, yaw, &control.yaw)
+LOG_ADD(LOG_FLOAT, thrust, &control.thrust)
+LOG_ADD(LOG_INT16, mpcRoll, &testControl.roll)
+LOG_ADD(LOG_INT16, mpcPitch, &testControl.pitch)
+LOG_ADD(LOG_INT16, mpcYaw, &testControl.yaw)
+LOG_ADD(LOG_FLOAT, mpcThrust, &testControl.thrust)
+LOG_ADD(LOG_FLOAT, mpcWx, &testSetpoint.attitudeRate.roll)
+LOG_ADD(LOG_FLOAT, mpcWy, &testSetpoint.attitudeRate.pitch)
+LOG_ADD(LOG_FLOAT, mpcWz, &testSetpoint.attitudeRate.yaw)
+
 LOG_ADD(LOG_UINT16, m1, &motorPwm.motors.m1)
 LOG_ADD(LOG_UINT16, m2, &motorPwm.motors.m2)
 LOG_ADD(LOG_UINT16, m3, &motorPwm.motors.m3)
@@ -680,17 +692,6 @@ LOG_ADD_CORE(LOG_FLOAT, y, &sensorData.mag.y)
  */
 LOG_ADD_CORE(LOG_FLOAT, z, &sensorData.mag.z)
 LOG_GROUP_STOP(mag)
-
-LOG_GROUP_START(controller)
-LOG_ADD(LOG_INT16, roll, &control.roll)
-LOG_ADD(LOG_INT16, pitch, &control.pitch)
-LOG_ADD(LOG_INT16, yaw, &control.yaw)
-LOG_ADD(LOG_FLOAT, thrust, &control.thrust)
-LOG_ADD(LOG_INT16, mpcRoll, &testControl.roll)
-LOG_ADD(LOG_INT16, mpcPitch, &testControl.pitch)
-LOG_ADD(LOG_INT16, mpcYaw, &testControl.yaw)
-LOG_ADD(LOG_FLOAT, mpcThrust, &testControl.thrust)
-LOG_GROUP_STOP(controller)
 
 /**
  * Log group for the state estimator, the currently estimated state of the platform.

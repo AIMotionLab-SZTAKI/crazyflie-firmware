@@ -487,7 +487,7 @@ static void runNeuralNetwork(setpoint_t* setpoint, velocity_t V, quaternion_t q,
 		}
 		
     // TODO: scale thrust
-		setpoint->thrust = (output_3[0] + output_residual[0]/10.0f)*13200;
+		setpoint->thrust = (output_3[0] + output_residual[0])*13200;
 		setpoint->attitudeRate.roll = degrees(output_3[1] + output_residual[1]);
 		setpoint->attitudeRate.pitch = degrees(output_3[2] + output_residual[2]);
 		setpoint->attitudeRate.yaw = degrees(output_3[3] + output_residual[3]);
@@ -561,8 +561,8 @@ float reachableParameter(const state_t *state, float currentPathParam) {
   //float speed = sqrt(pow(vel.x, 2) + pow(vel.y, 2) + pow(vel.z, 2));
   struct vec vel = state2vec(state->velocity);
   float speed = vmag(vel);
-  speed = (speed < 2.0f) ? speed : 2.0f;
-  speed = (speed > 1.25f) ? speed : 1.25f;
+  speed = (speed < 1.1f) ? speed : 1.0f;
+  speed = (speed > 1.0f) ? speed : 1.0f;
   float reachable = currentPathParam + 30*speed* 0.05f; // dt = 0.05
   return reachable; // TODO
 }
