@@ -88,34 +88,34 @@ void vector_denormalize(const float *v, const float *mean, const float *std, flo
     }
 }
 
-void extrinsic_xyz_to_rotation_matrix(const double angles[3], double R[3][3]) {
-    double alpha = angles[0]; // Rotation about X-axis
-    double beta = angles[1];  // Rotation about Y-axis
-    double gamma = angles[2]; // Rotation about Z-axis
+void extrinsic_xyz_to_rotation_matrix(const float angles[3], float R[3][3]) {
+    float alpha = angles[0]; // Rotation about X-axis
+    float beta = angles[1];  // Rotation about Y-axis
+    float gamma = angles[2]; // Rotation about Z-axis
 
     // Rotation about X-axis
-    double R_x[3][3] = {
+    float R_x[3][3] = {
         {1, 0, 0},
         {0, cos(alpha), -sin(alpha)},
         {0, sin(alpha), cos(alpha)}
     };
 
     // Rotation about Y-axis
-    double R_y[3][3] = {
+    float R_y[3][3] = {
         {cos(beta), 0, sin(beta)},
         {0, 1, 0},
         {-sin(beta), 0, cos(beta)}
     };
 
     // Rotation about Z-axis
-    double R_z[3][3] = {
+    float R_z[3][3] = {
         {cos(gamma), -sin(gamma), 0},
         {sin(gamma), cos(gamma), 0},
         {0, 0, 1}
     };
 
     // Temporary matrix for R_z * R_y
-    double R_temp[3][3];
+    float R_temp[3][3];
 
     // Matrix multiplication R_temp = R_z * R_y
     for (int i = 0; i < 3; i++) {
@@ -138,11 +138,11 @@ void extrinsic_xyz_to_rotation_matrix(const double angles[3], double R[3][3]) {
     }
 }
 
-void scalar_first_quaternion_to_rotation_matrix(const double quaternion[4], double R[3][3]) {
-    double q0 = quaternion[0];
-    double q1 = quaternion[1];
-    double q2 = quaternion[2];
-    double q3 = quaternion[3];
+void scalar_first_quaternion_to_rotation_matrix(const float quaternion[4], float R[3][3]) {
+    float q0 = quaternion[0];
+    float q1 = quaternion[1];
+    float q2 = quaternion[2];
+    float q3 = quaternion[3];
 
     // Compute the rotation matrix elements
     R[0][0] = 1 - 2 * (q2 * q2 + q3 * q3);
@@ -158,10 +158,44 @@ void scalar_first_quaternion_to_rotation_matrix(const double quaternion[4], doub
     R[2][2] = 1 - 2 * (q1 * q1 + q2 * q2);
 }
 
-void matrix_to_intrinsic_xyz(const double R[3][3], double angles[3]) {
+void matrix_to_intrinsic_xyz(const float R[3][3], float angles[3]) {
     // Compute roll, pitch, and yaw
     angles[0] = atan2(-R[1][2], R[2][2]);  // Roll
     angles[1] = asin(R[0][2]);            // Pitch
     angles[2] = atan2(-R[0][1], R[0][0]); // Yaw
 }
 
+void convert_state_extrinsic_intrinsic(float *current_state, float *desired_state) {
+
+    float extrinsic_xyz_euler[3];
+
+    float R[3][3];
+
+    float intrinsic_xyz_euler[3];
+
+    // Convert current state from extrinsic to intrinsic
+    for (int i = 0; i < 3; i++) {
+        extrinsic_xyz_euler[i] = current_state[i + 6];
+    }
+
+    extrinsic_xyz_to_rotation_matrix(extrinsic_xyz_euler, R);
+
+    matrix_to_intrinsic_xyz(R, intrinsic_xyz_euler);
+
+    for (int i = 0; i < 3; i++) {
+        current_state[i + 6] = intrinsic_xyz_euler[i];
+    }
+
+    // Convert desired state from extrinsic to intrinsic
+    for (int i = 0; i < 3; i++) {
+        extrinsic_xyz_euler[i] = desired_state[i + 6];
+    }
+    
+    extrinsic_xyz_to_rotation_matrix(extrinsic_xyz_euler, R);
+
+    matrix_to_intrinsic_xyz(R, intrinsic_xyz_euler);
+    
+    for (int i = 0; i < 3; i++) {
+        desired_state[i + 6] = intrinsic_xyz_euler[i];
+    }
+}

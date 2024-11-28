@@ -92,11 +92,13 @@ void vector_normalize(const float *v, const float *mean, const float *std, float
 // Dennormalize vector
 void vector_denormalize(const float *v, const float *mean, const float *std, float *result, int size);
 
-void extrinsic_xyz_to_rotation_matrix(const double angles[3], double R[3][3]);
+void extrinsic_xyz_to_rotation_matrix(const float angles[3], float R[3][3]);
 
-void scalar_first_quaternion_to_rotation_matrix(const double quaternion[4], double R[3][3]);
+void scalar_first_quaternion_to_rotation_matrix(const float quaternion[4], float R[3][3]);
 
-void matrix_to_intrinsic_xyz(const double R[3][3], double angles[3]);
+void matrix_to_intrinsic_xyz(const float R[3][3], float angles[3]);
+
+void convert_state_extrinsic_intrinsic(float *current_state, float *desired_state);
 
 void inner_loop_lpv(const float *target_state, const float *current_state, float *u);
 

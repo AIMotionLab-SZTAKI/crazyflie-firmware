@@ -62,6 +62,9 @@ bool controllerKoopmanTest(void)
 
 // Koopman controller implementation
 void koopman_controller(float *current_state, float *desired_state, float *control_input) {
+
+  convert_state_extrinsic_intrinsic(current_state, desired_state);
+
   // Extract positions
   float current_pos[3] = {current_state[0], current_state[1], current_state[2]};
   float current_vel_state[9] = {current_state[3], current_state[4], current_state[5], current_state[6], current_state[7], current_state[8], current_state[9], current_state[10], current_state[11]};
