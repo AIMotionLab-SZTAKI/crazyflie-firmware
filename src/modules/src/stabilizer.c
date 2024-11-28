@@ -292,24 +292,16 @@ static void stabilizerTask(void* param)
       stateEstimator(&state, tick);
       compressState();
 
-      if (crtpCommanderHighLevelGetSetpoint(&tempSetpoint, &state, tick)) {
+      if (RATE_DO_EXECUTE(RATE_25_HZ, tick)) mpcGetSetpoint(&setpoint, &state, tick);
+      if (controllerGetType() != ControllerTypeMpc) {
+        if (crtpCommanderHighLevelGetSetpoint(&tempSetpoint, &state, tick)) {
         commanderSetSetpoint(&tempSetpoint, COMMANDER_PRIORITY_HIGHLEVEL);
-      }
-      commanderGetSetpoint(&setpoint, &state); 
-      
+        }
+        commanderGetSetpoint(&setpoint, &state);        
+      }         
       compressSetpoint();
-
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
-
       controller(&control, &setpoint, &sensorData, &state, tick);
-
-
-      if (RATE_DO_EXECUTE(RATE_25_HZ, tick)) {
-        controllerMpcInit();
-        mpcGetSetpoint(&testSetpoint, &state, tick);
-      }
-      controllerMpc(&testControl, &testSetpoint, &sensorData, &state, tick);
-
       checkEmergencyStopTimeout();
 
       //

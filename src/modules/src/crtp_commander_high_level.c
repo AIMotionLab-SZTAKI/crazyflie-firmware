@@ -489,7 +489,7 @@ static void runNeuralNetwork(setpoint_t* setpoint, velocity_t V, quaternion_t q,
     // TODO: scale thrust
 		setpoint->thrust = (output_3[0] + output_residual[0])*13200;
 		setpoint->attitudeRate.roll = degrees(output_3[1] + output_residual[1]);
-		setpoint->attitudeRate.pitch = degrees(output_3[2] + output_residual[2]);
+		setpoint->attitudeRate.pitch = -degrees(output_3[2] + output_residual[2]);
 		setpoint->attitudeRate.yaw = degrees(output_3[3] + output_residual[3]);
 }
 
