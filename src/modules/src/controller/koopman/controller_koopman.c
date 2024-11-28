@@ -20,10 +20,10 @@ Koopman controller.
 
 // Outer loop controller gains
 float Kp[3][3] = {
-    {10, 0, 0}, {0, 0, 0}, {0, 0, 0}
+    {10, 0, 0}, {0, 10, 0}, {0, 0, 10}
 };
 float Ki[3][3] = {
-    {0.1, 0, 0}, {0, 0, 0}, {0, 0, 0}
+    {0.1, 0, 0}, {0, 0.1, 0}, {0, 0, 0.1}
 };
 
 // Logging variables

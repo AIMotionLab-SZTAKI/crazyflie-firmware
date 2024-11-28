@@ -87,3 +87,81 @@ void vector_denormalize(const float *v, const float *mean, const float *std, flo
         result[i] = v[i] * std[i] + mean[i];
     }
 }
+
+void extrinsic_xyz_to_rotation_matrix(const double angles[3], double R[3][3]) {
+    double alpha = angles[0]; // Rotation about X-axis
+    double beta = angles[1];  // Rotation about Y-axis
+    double gamma = angles[2]; // Rotation about Z-axis
+
+    // Rotation about X-axis
+    double R_x[3][3] = {
+        {1, 0, 0},
+        {0, cos(alpha), -sin(alpha)},
+        {0, sin(alpha), cos(alpha)}
+    };
+
+    // Rotation about Y-axis
+    double R_y[3][3] = {
+        {cos(beta), 0, sin(beta)},
+        {0, 1, 0},
+        {-sin(beta), 0, cos(beta)}
+    };
+
+    // Rotation about Z-axis
+    double R_z[3][3] = {
+        {cos(gamma), -sin(gamma), 0},
+        {sin(gamma), cos(gamma), 0},
+        {0, 0, 1}
+    };
+
+    // Temporary matrix for R_z * R_y
+    double R_temp[3][3];
+
+    // Matrix multiplication R_temp = R_z * R_y
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            R_temp[i][j] = 0;
+            for (int k = 0; k < 3; k++) {
+                R_temp[i][j] += R_z[i][k] * R_y[k][j];
+            }
+        }
+    }
+
+    // Final matrix R = R_temp * R_x
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            R[i][j] = 0;
+            for (int k = 0; k < 3; k++) {
+                R[i][j] += R_temp[i][k] * R_x[k][j];
+            }
+        }
+    }
+}
+
+void scalar_first_quaternion_to_rotation_matrix(const double quaternion[4], double R[3][3]) {
+    double q0 = quaternion[0];
+    double q1 = quaternion[1];
+    double q2 = quaternion[2];
+    double q3 = quaternion[3];
+
+    // Compute the rotation matrix elements
+    R[0][0] = 1 - 2 * (q2 * q2 + q3 * q3);
+    R[0][1] = 2 * (q1 * q2 - q3 * q0);
+    R[0][2] = 2 * (q1 * q3 + q2 * q0);
+
+    R[1][0] = 2 * (q1 * q2 + q3 * q0);
+    R[1][1] = 1 - 2 * (q1 * q1 + q3 * q3);
+    R[1][2] = 2 * (q2 * q3 - q1 * q0);
+
+    R[2][0] = 2 * (q1 * q3 - q2 * q0);
+    R[2][1] = 2 * (q2 * q3 + q1 * q0);
+    R[2][2] = 1 - 2 * (q1 * q1 + q2 * q2);
+}
+
+void matrix_to_intrinsic_xyz(const double R[3][3], double angles[3]) {
+    // Compute roll, pitch, and yaw
+    angles[0] = atan2(-R[1][2], R[2][2]);  // Roll
+    angles[1] = asin(R[0][2]);            // Pitch
+    angles[2] = atan2(-R[0][1], R[0][0]); // Yaw
+}
+

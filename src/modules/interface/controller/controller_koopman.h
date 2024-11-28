@@ -92,6 +92,12 @@ void vector_normalize(const float *v, const float *mean, const float *std, float
 // Dennormalize vector
 void vector_denormalize(const float *v, const float *mean, const float *std, float *result, int size);
 
+void extrinsic_xyz_to_rotation_matrix(const double angles[3], double R[3][3]);
+
+void scalar_first_quaternion_to_rotation_matrix(const double quaternion[4], double R[3][3]);
+
+void matrix_to_intrinsic_xyz(const double R[3][3], double angles[3]);
+
 void inner_loop_lpv(const float *target_state, const float *current_state, float *u);
 
 void interpolate_feedback_gains(float *p_cur, float M_out[nu][nx_full]);
@@ -99,4 +105,5 @@ void interpolate_feedback_gains(float *p_cur, float M_out[nu][nx_full]);
 void network_evaluate(float *control_n, float *state_array);
 
 void outer_loop_pi(float *current_pos, float *desired_pos, float *target_vel);
+
 #endif //__CONTROLLER_KOOPMAN_H__

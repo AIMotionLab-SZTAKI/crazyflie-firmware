@@ -13,7 +13,8 @@ float normalized_target_state[9];   // Normalized target state
 float subnet_cur_states[40];    // Subnet states estimated by encoder
 float target_subnet_states[40]; // Subnet states for the target
 float full_cur_state[48];        // Full state estimate
-float e[40];                    // Error vector for Koopman state estimation
+float full_target_state[48];     // Full target state
+float e[nx_full];                    // Error vector for Koopman state estimation
 float p[np];                     // Scheduling variable
 float u_normed[4];              // Normalized control input
 float B_result[8];               // Temporary storage for matrix-vector results
@@ -58,10 +59,10 @@ void inner_loop_lpv(const float *current_state, const float *target_state, float
     network_evaluate(normalized_target_state, target_subnet_states);
 
     // Concatenate target filter states (zeros) and subnet states to form full_target_state
-    vector_stack(target_filter_states, target_subnet_states, full_cur_state, 8, 40);
+    vector_stack(target_filter_states, target_subnet_states, full_target_state, 8, 40);
 
     // Compute error vector e (negated compared to the MATLAB code)
-    vector_subtraction(full_cur_state, target_subnet_states, e, 40);
+    vector_subtraction(full_cur_state, full_target_state, e, 48);
 
     // Copy the last np states of normalized_cur_state to p
     for (int i = 0; i < np; i++) {
@@ -72,7 +73,7 @@ void inner_loop_lpv(const float *current_state, const float *target_state, float
     interpolate_feedback_gains(p, K);
 
     // Compute control input: u_normed = K * e (negated compared to the MATLAB code)
-    matrix_vector_multiply(&K[0][0], e, u_normed, 4, 40);
+    matrix_vector_multiply(&K[0][0], e, u_normed, 4, nx_full);
 
     // Denormalize control input: u = u_normed .* ustd + u0
     vector_denormalize(u_normed, u0, ustd, u, 4);
