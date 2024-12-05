@@ -123,6 +123,7 @@ struct traj_eval
 	struct vec rpy;
 	struct vec omega;
 	struct vec torques;
+	struct quat quat;
 	float thrust;
 	float yaw;
 	float alpha;

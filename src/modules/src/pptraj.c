@@ -352,6 +352,7 @@ struct traj_eval poly4d_eval(struct poly4d const *p, float t)
 	
 	struct mat33 R = mcolumns(x_body, y_body, z_body);
 	out.rpy = quat2rpy(mat2quat(R));
+	out.quat = mat2quat(R);
 
 	return out;
 }

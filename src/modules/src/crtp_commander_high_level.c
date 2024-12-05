@@ -349,6 +349,10 @@ bool crtpCommanderHighLevelGetSetpoint(setpoint_t* setpoint, const state_t *stat
     setpoint->torques.x = ev.torques.x;
     setpoint->torques.y = ev.torques.y;
     setpoint->torques.z = ev.torques.z;
+    setpoint->attitudeQuaternion.w = ev.quat.w;
+    setpoint->attitudeQuaternion.x = ev.quat.x;
+    setpoint->attitudeQuaternion.y = ev.quat.y;
+    setpoint->attitudeQuaternion.z = ev.quat.z;
     setpoint->mode.x = modeAbs;
     setpoint->mode.y = modeAbs;
     setpoint->mode.z = modeAbs;
