@@ -253,6 +253,10 @@ static void communicationTask(void* param)
           handleTrajectoryDataPacket(&rxPacket);
           break;
 
+        case FORWARDED_CONTROL_PACKET:
+          // we handle it later, todo: refactor other parts of the code accordingly
+          break;
+
         default:
           DEBUG_PRINT("Unknown service type.\n");
           commState = SYNC;
@@ -333,6 +337,35 @@ void createTrajectoryPacket(uart_packet* packet, va_list* args) {
   packet->payload[packet->payloadLength] = calcCrc(packet);
 }
 
+// Create a packet that is sent back when controls are forwarded from a PC by a Raspberry Pi
+// As of now this only creates a dummy packet with three floats
+void createForwardPacket(uart_packet* packet, va_list* args) {
+  float* dummy_float_1 = va_arg(*args, float*);
+  float* dummy_float_2 = va_arg(*args, float*);
+  float* dummy_float_3 = va_arg(*args, float*);
+
+  ASSERT(dummy_float_1 != NULL && dummy_float_2 != NULL && dummy_float_3 != NULL);
+
+  uint8_t payloadLength = sizeof(*dummy_float_1) + sizeof(*dummy_float_2) + sizeof(*dummy_float_3);
+  ASSERT(payloadLength <= MAX_PAYLOAD_LENGTH);
+
+  packet->start = START_BYTE;
+  packet->serviceType = FORWARDED_CONTROL_PACKET;
+  packet->payloadLength = payloadLength;
+
+  unsigned long ptr = 0;
+
+  memcpy(&packet->payload[ptr], dummy_float_1, sizeof(*dummy_float_1));
+  ptr += sizeof(*dummy_float_1);
+
+  memcpy(&packet->payload[ptr], dummy_float_2, sizeof(*dummy_float_2));
+  ptr += sizeof(*dummy_float_2);
+
+  memcpy(&packet->payload[ptr], dummy_float_3, sizeof(*dummy_float_3));
+
+  packet->payload[packet->payloadLength] = calcCrc(packet);
+}
+
 
 
 void sendDataUART(const char *format, ...) {
@@ -356,6 +389,11 @@ void sendDataUART(const char *format, ...) {
       case 'T': {
         // Trajectory (dummy, 3xfloat)
         createTrajectoryPacket(&packet, &args);
+        break;
+      }
+      case 'F': { 
+        // Forward (currently dummy values) 
+        createForwardPacket(&packet, &args);
         break;
       }
       default:
@@ -412,5 +450,15 @@ void handle_control_packet(uart_packet *packet, float* thrustDesired, float* rol
   memcpy(yawRateDesired, &packet->payload[ptr], sizeof(*yawRateDesired));
 }
 
+void handle_forwarded_packet(uart_packet *packet, float* thrustDesired, float* rollRateDesired, float* pitchRateDesired, float* yawRateDesired) {
+  unsigned long ptr = 0;
 
-
+  ptr += sizeof(*thrustDesired); // timestamp sent as a float, not used for now
+  memcpy(thrustDesired, &packet->payload[ptr], sizeof(*thrustDesired));
+  ptr += sizeof(*thrustDesired);
+  memcpy(rollRateDesired, &packet->payload[ptr], sizeof(*rollRateDesired));
+  ptr += sizeof(*rollRateDesired);
+  memcpy(pitchRateDesired, &packet->payload[ptr], sizeof(*pitchRateDesired));
+  ptr += sizeof(*pitchRateDesired);
+  memcpy(yawRateDesired, &packet->payload[ptr], sizeof(*yawRateDesired));
+}

@@ -100,16 +100,21 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
   }
 
   if (RATE_DO_EXECUTE(COMMUNICATION_RATE, tick)) {
-    sendDataUART("C", &actuatorThrust, state);
     /*
+    sendDataUART("C", &actuatorThrust, state);
     float dummy1 = 12.34;
     float dummy2 = 345.12;
     sendDataUART("T", &actuatorThrust, &dummy1, &dummy2);
     */
+    float dummy1 = 12.34;
+    float dummy2 = 345.12;
+    sendDataUART("F", &actuatorThrust, &dummy1, &dummy2);
     uart_packet receiverPacket;
     if (receiveDataUART(&receiverPacket)) {
       if (receiverPacket.serviceType == CONTROL_PACKET) {
         handle_control_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
+      } else if (receiverPacket.serviceType == FORWARDED_CONTROL_PACKET) {
+        handle_forwarded_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
       }
     }
     
