@@ -1,4 +1,8 @@
 #include "controller_koopman.h"
+#include "log.h"
+
+static float thrust;
+static float thrust_normed;
 
 // Static variables for persistent filter states and control input
 float filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -88,6 +92,12 @@ void inner_loop_lpv(const float *current_state, const float *target_state, float
     for (int i=0; i<8; i++) {
         filter_states[i] = 0.0;
     }
-    // filter_states = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    thrust = u[0];
+    thrust_normed = u_normed[0];
     
 }
+
+LOG_GROUP_START(Koopman)
+LOG_ADD(LOG_FLOAT, thrust, &thrust)
+LOG_ADD(LOG_FLOAT, thrust_normed, &thrust_normed)
+LOG_GROUP_STOP(Koopman)
