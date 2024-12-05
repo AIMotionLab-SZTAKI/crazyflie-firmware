@@ -144,6 +144,14 @@ void scalar_first_quaternion_to_rotation_matrix(const float quaternion[4], float
     float q2 = quaternion[2];
     float q3 = quaternion[3];
 
+    // Normalize the quaternion
+    float norm = sqrt(q0*q0+q1*q1+q2*q2+q3*q3);
+
+    q0 /= norm;
+    q1 /= norm;
+    q2 /= norm;
+    q3 /= norm;
+
     // Compute the rotation matrix elements
     R[0][0] = 1 - 2 * (q2 * q2 + q3 * q3);
     R[0][1] = 2 * (q1 * q2 - q3 * q0);
