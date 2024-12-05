@@ -105,6 +105,8 @@ static float yaw; // last known setpoint yaw (yaw [rad])
 static struct piecewise_traj trajectory;
 static struct piecewise_traj_compressed  compressed_trajectory;
 
+static point_t points[5];
+
 // makes sure that we don't evaluate the trajectory while it is being changed
 static xSemaphoreHandle lockTraj;
 static StaticSemaphore_t lockTrajBuffer;
@@ -525,7 +527,10 @@ static point_t getTrajPoint(float pathParam) {
   } else {
     ev = traj_eval_invalid();
   }
-  point_t p = {ev.pos.x, ev.pos.y, ev.pos.z};
+  point_t p;
+  p.x = ev.pos.x;
+  p.y = ev.pos.y;
+  p.z = ev.pos.z;
   return p;
 }
 
@@ -541,7 +546,7 @@ static float distanceSquare(const state_t *state, float pathParam) {
 static float getClosestPathParam(const state_t *state, const float prevParam, const float maxParam) {
   int n = 50;
   float delta = (maxParam - prevParam) / n;
-  float closestParam = prevParam;
+  float closestParam2 = prevParam;
   float runningParam = prevParam;
   float mind2 = distanceSquare(state, prevParam);  
   float d2 = distanceSquare(state, runningParam);  
@@ -550,10 +555,10 @@ static float getClosestPathParam(const state_t *state, const float prevParam, co
     d2 = distanceSquare(state, runningParam);  
     if (d2 < mind2) {
       mind2 = d2;
-      closestParam = runningParam;
+      closestParam2 = runningParam;
     }
   }
-  return closestParam;
+  return closestParam2;
 } 
 
 float reachableParameter(const state_t *state, float currentPathParam) {
@@ -561,8 +566,8 @@ float reachableParameter(const state_t *state, float currentPathParam) {
   //float speed = sqrt(pow(vel.x, 2) + pow(vel.y, 2) + pow(vel.z, 2));
   struct vec vel = state2vec(state->velocity);
   float speed = vmag(vel);
-  speed = (speed < 1.1f) ? speed : 1.0f;
-  speed = (speed > 1.0f) ? speed : 1.0f;
+  speed = (speed < 2.0f) ? speed : 2.0f;
+  speed = (speed > 1.25f) ? speed : 1.25f;
   float reachable = currentPathParam + 30*speed* 0.05f; // dt = 0.05
   return reachable; // TODO
 }
@@ -583,12 +588,12 @@ void mpcGetSetpoint(setpoint_t* setpoint, const state_t *state, uint32_t tick) {
   if (usecTimestamp() / 1e6f <= planner.trajectory -> t_begin + 0.1f) {
     currentParam = 0;
   } 
-  currentParam = getClosestPathParam(state, currentParam, currentParam+0.05f*3);
-  float d = (reachableParameter(state, currentParam) - currentParam)/6; // path param diff between points
-  point_t points[5];
+  currentParam = getClosestPathParam(state, currentParam, currentParam+0.05f*6);
+  float d = (reachableParameter(state, currentParam) - currentParam)/(6-1); // path param diff between points
+  // point_t points[5];
   if (planner.type == TRAJECTORY_TYPE_PIECEWISE) { // only non-compressed for now
     for (int i=1; i<6; i++) {
-      float pathParam = currentParam + (i+1)*d;
+      float pathParam = currentParam + (i)*d; // 1 2 3 4 5
       point_t posAtParam = getTrajPoint(pathParam);
       point_t pos = state->position;
       points[i-1].x = posAtParam.x - pos.x;
@@ -1164,3 +1169,22 @@ PARAM_ADD_CORE(PARAM_FLOAT, vtoff, &defaultTakeoffVelocity)
 PARAM_ADD_CORE(PARAM_FLOAT, vland, &defaultLandingVelocity)
 
 PARAM_GROUP_STOP(hlCommander)
+
+LOG_GROUP_START(horizon)
+LOG_ADD(LOG_FLOAT, point_0_x, &points[0].x)
+LOG_ADD(LOG_FLOAT, point_0_y, &points[0].y)
+LOG_ADD(LOG_FLOAT, point_0_z, &points[0].z)
+LOG_ADD(LOG_FLOAT, point_1_x, &points[1].x)
+LOG_ADD(LOG_FLOAT, point_1_y, &points[1].y)
+LOG_ADD(LOG_FLOAT, point_1_z, &points[1].z)
+LOG_ADD(LOG_FLOAT, point_2_x, &points[2].x)
+LOG_ADD(LOG_FLOAT, point_2_y, &points[2].y)
+LOG_ADD(LOG_FLOAT, point_2_z, &points[2].z)
+LOG_ADD(LOG_FLOAT, point_3_x, &points[3].x)
+LOG_ADD(LOG_FLOAT, point_3_y, &points[3].y)
+LOG_ADD(LOG_FLOAT, point_3_z, &points[3].z)
+LOG_ADD(LOG_FLOAT, point_4_x, &points[4].x)
+LOG_ADD(LOG_FLOAT, point_4_y, &points[4].y)
+LOG_ADD(LOG_FLOAT, point_4_z, &points[4].z)
+LOG_ADD(LOG_FLOAT, path_param, &currentParam)
+LOG_GROUP_STOP(horizon)
