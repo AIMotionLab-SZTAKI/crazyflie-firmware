@@ -6,7 +6,7 @@
 // Hardcoded feedback gains and scheduling points
 #define nkoop 40
 #define nz 8
-#define grid_point_num 10
+#define grid_point_num 30
 #define nx_full 48
 #define nu 4
 #define np 6
@@ -25,7 +25,9 @@ extern float Wz_lpv_B[8][8];
 
 // Interpolation data declarations
 extern float p_normed_LPV_grid[6][grid_point_num];
-extern float K_LPV_grid[nu][nx_full][grid_point_num];
+extern uint8_t K_LPV_grid_uint8[nu][nx_full][grid_point_num];
+extern float K_min_val[nu][nx_full];
+extern float K_range_val[nu][nx_full];
 
 
 // Outer loop controller gains declarations
@@ -108,6 +110,6 @@ void network_evaluate(float *control_n, float *state_array);
 
 void outer_loop_pi(float *current_pos, float *desired_pos, float *target_vel);
 
-void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min_val, const float *K_range_val, float *K_float, int rows, int cols);
+void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min, const float *K_range, float *K_float, int rows, int cols);
 
 #endif //__CONTROLLER_KOOPMAN_H__
