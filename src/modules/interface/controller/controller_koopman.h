@@ -102,10 +102,12 @@ void convert_state_extrinsic_intrinsic(float *current_state, float *desired_stat
 
 void inner_loop_lpv(const float *target_state, const float *current_state, float *u);
 
-void interpolate_feedback_gains(float *p_cur, float M_out[nu][nx_full]);
+void interpolate_feedback_gains(float *p_cur, uint8_t M_out[nu][nx_full]);
 
 void network_evaluate(float *control_n, float *state_array);
 
 void outer_loop_pi(float *current_pos, float *desired_pos, float *target_vel);
+
+void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min_val, const float *K_range_val, float *K_float, int rows, int cols);
 
 #endif //__CONTROLLER_KOOPMAN_H__

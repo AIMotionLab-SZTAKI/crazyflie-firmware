@@ -186,8 +186,6 @@ void convert_state_extrinsic_intrinsic(float *current_state, float *desired_stat
         extrinsic_xyz_euler[i] = current_state[i + 6];
     }
 
-    extrinsic_xyz_to_rotation_matrix(extrinsic_xyz_euler, R);
-
     matrix_to_intrinsic_xyz(R, intrinsic_xyz_euler);
 
     for (int i = 0; i < 3; i++) {
@@ -198,12 +196,19 @@ void convert_state_extrinsic_intrinsic(float *current_state, float *desired_stat
     for (int i = 0; i < 3; i++) {
         extrinsic_xyz_euler[i] = desired_state[i + 6];
     }
-    
-    extrinsic_xyz_to_rotation_matrix(extrinsic_xyz_euler, R);
 
     matrix_to_intrinsic_xyz(R, intrinsic_xyz_euler);
     
     for (int i = 0; i < 3; i++) {
         desired_state[i + 6] = intrinsic_xyz_euler[i];
+    }
+}
+
+void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min_val, const float *K_range_val, float *K_float, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            int index = i * cols + j;  // Calculate the linear index
+            K_float[index] = K_min_val[index] + K_range_val[index] * K_uint8[index] / 255.0;
+        }
     }
 }
