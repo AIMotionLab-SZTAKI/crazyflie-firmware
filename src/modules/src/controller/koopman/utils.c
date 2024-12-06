@@ -208,7 +208,7 @@ void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min_val, const
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             int index = i * cols + j;  // Calculate the linear index
-            K_float[index] = K_min_val[index] + K_range_val[index] * K_uint8[index] / 255.0;
+            K_float[index] = K_min_val[index] + K_range_val[index] * (float)K_uint8[index] / (float)255.0;
         }
     }
 }
