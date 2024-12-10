@@ -1,5 +1,13 @@
 #include "controller_koopman.h"
 
+// Outer loop controller gains
+float Kp[3][3] = {
+    {0, 0, 0}, {0, 0, 0}, {0, 0, 0}
+};
+float Ki[3][3] = {
+    {0.0, 0, 0}, {0, 0.0, 0}, {0, 0, 0.0}
+};
+
 float integral[3] = {0.0, 0.0, 0.0};  // Integral state for x, y, z
 
 void outer_loop_pi(float *current_pos, float *desired_pos, float *target_vel) {

@@ -18,14 +18,6 @@ Koopman controller.
 
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 
-// Outer loop controller gains
-float Kp[3][3] = {
-    {10, 0, 0}, {0, 10, 0}, {0, 0, 10}
-};
-float Ki[3][3] = {
-    {0.1, 0, 0}, {0, 0.1, 0}, {0, 0, 0.1}
-};
-
 // Logging variables
 
 static float cmd_thrust;
@@ -33,6 +25,9 @@ static float cmd_roll;
 static float cmd_pitch;
 static float cmd_yaw;
 
+static float cur_pos_x;
+static float cur_pos_y;
+static float cur_pos_z;
 static float cur_vel_x;
 static float cur_vel_y;
 static float cur_vel_z;
@@ -100,9 +95,9 @@ void koopman_controller(float *current_state, float *desired_state, float *contr
 
   // Create the inner loop reference (desired velocities + outer loop velocities)
   float inner_loop_ref[9] = {
-      desired_vel_state[0], //+ outer_loop_vel[0],
-      desired_vel_state[1], // + outer_loop_vel[1],
-      desired_vel_state[2], // + outer_loop_vel[2],
+      desired_vel_state[0] + outer_loop_vel[0],
+      desired_vel_state[1] + outer_loop_vel[1],
+      desired_vel_state[2] + outer_loop_vel[2],
       desired_vel_state[3], // Desired roll angle
       desired_vel_state[4], // Desired pitch angle
       desired_vel_state[5], // Desired yaw angle
@@ -181,6 +176,9 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   cmd_pitch = control->pitch;
   cmd_yaw = control->yaw;
 
+  cur_pos_x = current_state[0];
+  cur_pos_y = current_state[1];
+  cur_pos_z = current_state[2];
   cur_vel_x = current_state[3];
   cur_vel_y = current_state[4];
   cur_vel_z = current_state[5];
@@ -223,6 +221,9 @@ LOG_ADD(LOG_FLOAT, cmd_pitch, &cmd_pitch)
 LOG_ADD(LOG_FLOAT, cmd_roll, &cmd_roll)
 LOG_ADD(LOG_FLOAT, cmd_yaw, &cmd_yaw)
 
+LOG_ADD(LOG_FLOAT, cur_pos_x, &cur_pos_x)
+LOG_ADD(LOG_FLOAT, cur_pos_y, &cur_pos_y)
+LOG_ADD(LOG_FLOAT, cur_pos_z, &cur_pos_z)
 LOG_ADD(LOG_FLOAT, cur_vel_x, &cur_vel_x)
 LOG_ADD(LOG_FLOAT, cur_vel_y, &cur_vel_y)
 LOG_ADD(LOG_FLOAT, cur_vel_z, &cur_vel_z)
