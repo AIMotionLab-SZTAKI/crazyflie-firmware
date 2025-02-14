@@ -38,6 +38,9 @@ static float cur_t_x;
 static float cur_t_y;
 static float cur_t_z;
 
+static float target_pos_x;
+static float target_pos_y;
+static float target_pos_z;
 static float target_vel_x;
 static float target_vel_y;
 static float target_vel_z;
@@ -95,9 +98,9 @@ void koopman_controller(float *current_state, float *desired_state, float *contr
 
   // Create the inner loop reference (desired velocities + outer loop velocities)
   float inner_loop_ref[9] = {
-      desired_vel_state[0] + outer_loop_vel[0],
-      desired_vel_state[1] + outer_loop_vel[1],
-      desired_vel_state[2] + outer_loop_vel[2],
+      desired_vel_state[0], // + outer_loop_vel[0],
+      desired_vel_state[1], // + outer_loop_vel[1],
+      desired_vel_state[2], // + outer_loop_vel[2],
       desired_vel_state[3], // Desired roll angle
       desired_vel_state[4], // Desired pitch angle
       desired_vel_state[5], // Desired yaw angle
@@ -189,6 +192,9 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   cur_t_y = current_state[10];
   cur_t_z = current_state[11];
 
+  target_pos_x = desired_state[0];
+  target_pos_y = desired_state[1];
+  target_pos_z = desired_state[2];
   target_vel_x = desired_state[3];
   target_vel_y = desired_state[4];
   target_vel_z = desired_state[5];
@@ -234,6 +240,9 @@ LOG_ADD(LOG_FLOAT, cur_t_x, &cur_t_x)
 LOG_ADD(LOG_FLOAT, cur_t_y, &cur_t_y)
 LOG_ADD(LOG_FLOAT, cur_t_z, &cur_t_z)
 
+LOG_ADD(LOG_FLOAT, target_pos_x, &target_pos_x)
+LOG_ADD(LOG_FLOAT, target_pos_y, &target_pos_y)
+LOG_ADD(LOG_FLOAT, target_pos_z, &target_pos_z)
 LOG_ADD(LOG_FLOAT, target_vel_x, &target_vel_x)
 LOG_ADD(LOG_FLOAT, target_vel_y, &target_vel_y)
 LOG_ADD(LOG_FLOAT, target_vel_z, &target_vel_z)
