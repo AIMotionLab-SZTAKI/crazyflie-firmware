@@ -148,8 +148,8 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   float desired_state[12] = {
     setpoint->position.x, setpoint->position.y, setpoint->position.z,
     setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z,
-    rpy[0], rpy[1], rpy[2], // elojel?
-    radians(setpoint->attitudeRate.roll), radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw) // elojel?
+    rpy[0], rpy[1], rpy[2],
+    radians(setpoint->attitudeRate.roll), -radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw)
   };
 
 
