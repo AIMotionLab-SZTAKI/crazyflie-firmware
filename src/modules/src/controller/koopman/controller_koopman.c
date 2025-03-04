@@ -149,7 +149,7 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
     setpoint->position.x, setpoint->position.y, setpoint->position.z,
     setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z,
     rpy[0], rpy[1], rpy[2], // elojel?
-    radians(setpoint->attitudeRate.roll), radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw) // elojel?
+    radians(setpoint->attitudeRate.roll), -radians(setpoint->attitudeRate.pitch), radians(setpoint->attitudeRate.yaw) // elojel?
   };
 
 
@@ -158,19 +158,18 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   if (setpoint->mode.z == modeDisable) {
     control->thrust = setpoint->thrust; // setpoint->thrust or 0?
   } else {
-    control->thrust = control_input[0] * 132000;
+    control->thrust = control_input[0];
   }
   if (control->thrust > 0) {
-    control->roll = clamp(control_input[1] / 8.7823e-7f, -32000, 32000); // int16_t
-    control->pitch = clamp(control_input[2] / 8.7823e-7f, -32000, 32000); // int16_t, elojel?
-    control->yaw = clamp(control_input[3] / 1.6103e-7f, -32000, 32000); // int16_t, elojel? a mellingerben itt van forditas
+    control->roll = control_input[1];
+    control->pitch = control_input[2];
+    control->yaw = control_input[3];
   } else {
     control->roll = 0;
     control->pitch = 0;
     control->yaw = 0;
     controllerKoopmanReset();
   }
-
 
 
   //log variables
