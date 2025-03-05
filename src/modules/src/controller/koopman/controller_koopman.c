@@ -119,7 +119,7 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
                                          const state_t *state,
                                          const uint32_t tick)
 { 
-  control->controlMode = controlModeLegacy;
+  control->controlMode = controlModeForceTorque;
   if (!RATE_DO_EXECUTE(200, tick)) { // freq?
       return;
   } 
