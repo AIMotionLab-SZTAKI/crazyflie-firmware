@@ -6,7 +6,7 @@
 // Hardcoded feedback gains and scheduling points
 #define nkoop 40
 #define nz 8
-#define grid_point_num 30
+#define grid_point_num 29
 #define nx_full 48
 #define nu 4
 #define np 6
