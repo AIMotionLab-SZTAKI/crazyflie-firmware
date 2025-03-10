@@ -90,8 +90,8 @@
 #define SPI_END_TRANSACTION     spiEndTransaction
 #endif
 
-#define MAX_USD_LOG_VARIABLES_PER_EVENT   (26)
-#define MAX_USD_LOG_EVENTS                (26)
+#define MAX_USD_LOG_VARIABLES_PER_EVENT   (29)
+#define MAX_USD_LOG_EVENTS                (29)
 #define FIXED_FREQUENCY_EVENT_ID          (0xFFFF)
 #define FIXED_FREQUENCY_EVENT_NAME        "fixedFrequency"
 
