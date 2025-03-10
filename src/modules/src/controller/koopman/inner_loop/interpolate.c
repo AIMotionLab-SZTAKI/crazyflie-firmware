@@ -28,6 +28,7 @@ void interpolate_feedback_gains(float *p_cur, uint8_t M_out[nu][nx_full]) {
         for (int j = 0; j < nx_full; j++) {
             M_out[i][j] = K_LPV_grid_uint8[i][j][best_dist_idx];
         }
+    }
     feedback_idx = best_dist_idx;
 }
 
