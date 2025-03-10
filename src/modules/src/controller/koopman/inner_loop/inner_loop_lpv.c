@@ -23,6 +23,10 @@ float target_filter_states[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // Tar
 uint8_t K_uint8[nu][nx_full];           // Feedback gain matrix
 float K[nu][nx_full];           // Feedback gain matrix
 
+
+static float state1;
+static float state4;
+
 void inner_loop_lpv(const float *current_state, const float *target_state, float *u) {
     for (int i=0; i<8; i++) {
         target_filter_states[i] = 0.0;
@@ -94,3 +98,9 @@ void inner_loop_lpv(const float *current_state, const float *target_state, float
     // }
     
 }
+LOG_GROUP_START(Koopman)
+
+LOG_ADD(LOG_FLOAT, state1, &state1)
+LOG_ADD(LOG_FLOAT, state4, &state4)
+
+LOG_GROUP_STOP(Koopman)

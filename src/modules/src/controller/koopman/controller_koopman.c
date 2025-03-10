@@ -20,10 +20,10 @@ Koopman controller.
 
 // Logging variables
 
-static float cmd_thrust;
-static float cmd_roll;
-static float cmd_pitch;
-static float cmd_yaw;
+static float cmd_thrust_koop;
+static float cmd_roll_koop;
+static float cmd_pitch_koop;
+static float cmd_yaw_koop;
 
 static float cur_pos_x;
 static float cur_pos_y;
@@ -98,9 +98,9 @@ void koopman_controller(float *current_state, float *desired_state, float *contr
 
   // Create the inner loop reference (desired velocities + outer loop velocities)
   float inner_loop_ref[9] = {
-      desired_vel_state[0], // + outer_loop_vel[0],
-      desired_vel_state[1], // + outer_loop_vel[1],
-      desired_vel_state[2], // + outer_loop_vel[2],
+      desired_vel_state[0] + outer_loop_vel[0],
+      desired_vel_state[1] + outer_loop_vel[1],
+      desired_vel_state[2] + outer_loop_vel[2],
       desired_vel_state[3], // Desired roll angle
       desired_vel_state[4], // Desired pitch angle
       desired_vel_state[5], // Desired yaw angle
@@ -155,28 +155,34 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
 
   float control_input[4] = {0, 0, 0, 0};  
   koopman_controller(current_state, desired_state, control_input);
-  if (setpoint->mode.z == modeDisable) {
-    control->thrust = setpoint->thrust; // setpoint->thrust or 0?
+  // if (setpoint->mode.z == modeDisable) {
+  //   control->thrust = setpoint->thrust; // setpoint->thrust or 0?
+  // } else {
+  //   control->thrust = control_input[0];
+  // }
+  control->thrustSi = control_input[0];
+  if (control->thrustSi > 0) {
+    control->torqueX = control_input[1];
+    control->torqueY = control_input[2];
+    control->torqueZ = control_input[3];
   } else {
-    control->thrust = control_input[0];
+    control->torqueX = 0;
+    control->torqueY = 0;
+    control->torqueZ = 0;
   }
-  if (control->thrust > 0) {
-    control->roll = control_input[1];
-    control->pitch = control_input[2];
-    control->yaw = control_input[3];
-  } else {
-    control->roll = 0;
-    control->pitch = 0;
-    control->yaw = 0;
-    controllerKoopmanReset();
-  }
+
+  // controllerKoopmanReset();
+  // control->roll = control_input[1];
+  // control->pitch = control_input[2];
+  // control->yaw = control_input[3];
 
 
   //log variables
-  cmd_thrust = control->thrust;
-  cmd_roll = control->roll;
-  cmd_pitch = control->pitch;
-  cmd_yaw = control->yaw;
+
+  cmd_thrust_koop = control_input[0];
+  cmd_roll_koop = control_input[1];
+  cmd_pitch_koop = control_input[2];
+  cmd_yaw_koop = control_input[3];
 
   cur_pos_x = current_state[0];
   cur_pos_y = current_state[1];
@@ -221,10 +227,10 @@ PARAM_ADD(PARAM_FLOAT, Ki3, &(Ki[2][2]))
 PARAM_GROUP_STOP(Koopman)
 
 LOG_GROUP_START(Koopman)
-LOG_ADD(LOG_FLOAT, cmd_thrust, &cmd_thrust)
-LOG_ADD(LOG_FLOAT, cmd_pitch, &cmd_pitch)
-LOG_ADD(LOG_FLOAT, cmd_roll, &cmd_roll)
-LOG_ADD(LOG_FLOAT, cmd_yaw, &cmd_yaw)
+LOG_ADD(LOG_FLOAT, cmd_thrust, &cmd_thrust_koop)
+LOG_ADD(LOG_FLOAT, cmd_pitch, &cmd_pitch_koop)
+LOG_ADD(LOG_FLOAT, cmd_roll, &cmd_roll_koop)
+LOG_ADD(LOG_FLOAT, cmd_yaw, &cmd_yaw_koop)
 
 LOG_ADD(LOG_FLOAT, cur_pos_x, &cur_pos_x)
 LOG_ADD(LOG_FLOAT, cur_pos_y, &cur_pos_y)
