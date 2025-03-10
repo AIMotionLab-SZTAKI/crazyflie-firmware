@@ -73,7 +73,7 @@ static sensorData_t sensorData;
 static state_t state;
 static control_t control;
 
-static control_t koopmanControl;
+// static control_t koopmanControl;
 
 static motors_thrust_uncapped_t motorThrustUncapped;
 static motors_thrust_uncapped_t motorThrustBatCompUncapped;
@@ -302,8 +302,8 @@ static void stabilizerTask(void* param)
 
       controller(&control, &setpoint, &sensorData, &state, tick);
 
-      controllerKoopmanInit();
-      controllerKoopman(&koopmanControl, &setpoint, &sensorData, &state, tick);
+      // controllerKoopmanInit();
+      // controllerKoopman(&koopmanControl, &setpoint, &sensorData, &state, tick);
 
       checkEmergencyStopTimeout();
 

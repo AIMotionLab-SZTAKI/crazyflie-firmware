@@ -168,7 +168,7 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
     control->roll = 0;
     control->pitch = 0;
     control->yaw = 0;
-    controllerKoopmanReset();
+    // controllerKoopmanReset();
   }
 
 

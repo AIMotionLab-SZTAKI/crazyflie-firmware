@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <math.h>
 #include "controller_koopman.h"
+#include "log.h"
+
+static int16_t feedback_idx;
 
 // Interpolation function
 void interpolate_feedback_gains(float *p_cur, uint8_t M_out[nu][nx_full]) {
@@ -26,4 +29,9 @@ void interpolate_feedback_gains(float *p_cur, uint8_t M_out[nu][nx_full]) {
             M_out[i][j] = K_LPV_grid_uint8[i][j][best_dist_idx];
         }
     }
+    feedback_idx = best_dist_idx;
 }
+
+LOG_GROUP_START(Koopman)
+LOG_ADD(LOG_INT16, feedback_idx, &feedback_idx)
+LOG_GROUP_STOP(Koopman)
