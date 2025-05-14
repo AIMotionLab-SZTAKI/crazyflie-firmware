@@ -59,6 +59,9 @@
 
 #include "controller_koopman.h"
 
+// Communication module include
+#include "communication.h"
+
 static float voltage = 0.0;
 
 static bool isInit;
@@ -182,9 +185,14 @@ void stabilizerInit(StateEstimatorType estimator)
   if(isInit)
     return;
 
+  DEBUG_PRINT("Stabilizer init\n");
+
   sensorsInit();
   stateEstimatorInit(estimator);
   controllerInit(ControllerTypeAutoSelect);
+
+  communicationInit();
+
   powerDistributionInit();
   motorsInit(platformConfigGetMotorMapping());
   collisionAvoidanceInit();
@@ -300,11 +308,13 @@ static void stabilizerTask(void* param)
 
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
+      //DEBUG_PRINT("%lu\n\n", rateSupervisorLatestCount(&rateSupervisorContext));
       controller(&control, &setpoint, &sensorData, &state, tick);
 
       // controllerKoopmanInit();
       // controllerKoopman(&koopmanControl, &setpoint, &sensorData, &state, tick);
 
+      
       checkEmergencyStopTimeout();
 
       //

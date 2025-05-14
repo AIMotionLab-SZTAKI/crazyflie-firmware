@@ -15,7 +15,6 @@ Koopman controller.
 #include "controller.h"
 #include "stdlib.h"
 #include "mem.h"
-#include "communication.h"
 
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 
@@ -60,6 +59,18 @@ static float quatz;
 static bool isInit = 0;
 
 void controllerKoopmanReset(void) {
+  for (int i=0; i<3; i++) {
+    integral[i] = 0;
+  }
+  for (int i=0; i<8; i++) {
+    filter_states[i] = 0;
+  }
+  for (int i=0; i<4; i++) {
+    u_normed_prev[i] = 0;
+  }
+  for (int i=0; i<9; i++) {
+    target_state_normed_prev[i] = 0;
+  }
 }
 
 void controllerKoopmanInit(void) {
@@ -72,12 +83,42 @@ bool controllerKoopmanTest(void)
   return true;
 }
 
+// Koopman controller implementation
+void koopman_controller(float *current_state, float *desired_state, float *control_input) {
+
+  // Extract positions
+  float current_pos[3] = {current_state[0], current_state[1], current_state[2]};
+  float current_vel_state[9] = {current_state[3], current_state[4], current_state[5], current_state[6], current_state[7], current_state[8], current_state[9], current_state[10], current_state[11]};
+  float desired_pos[3] = {desired_state[0], desired_state[1], desired_state[2]};
+  float desired_vel_state[9] = {desired_state[3], desired_state[4], desired_state[5], desired_state[6], desired_state[7], desired_state[8], desired_state[9], desired_state[10], desired_state[11]};
+
+  // Call the outer loop controller to compute velocity reference
+  float outer_loop_vel[3] = {0.0, 0.0, 0.0};
+  outer_loop_pi(current_pos, desired_pos, outer_loop_vel);
+
+  // Create the inner loop reference (desired velocities + outer loop velocities)
+  float inner_loop_ref[9] = {
+      desired_vel_state[0] + outer_loop_vel[0],
+      desired_vel_state[1] + outer_loop_vel[1],
+      desired_vel_state[2] + outer_loop_vel[2],
+      desired_vel_state[3], // Desired roll angle
+      desired_vel_state[4], // Desired pitch angle
+      desired_vel_state[5], // Desired yaw angle
+      desired_vel_state[6], // Desired roll rate
+      desired_vel_state[7], // Desired pitch rate
+      desired_vel_state[8]  // Desired yaw rate
+  };
+
+  // Call the inner loop controller
+  inner_loop_lpv(current_vel_state, inner_loop_ref, control_input);
+}
+
 
 void controllerKoopman(control_t *control, const setpoint_t *setpoint,
                                          const sensorData_t *sensors,
                                          const state_t *state,
                                          const uint32_t tick)
-                                         { 
+{ 
   control->controlMode = controlModeForceTorque;
   if (!RATE_DO_EXECUTE(200, tick)) { // freq?
       return;
@@ -112,44 +153,8 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   };
 
 
-  float thrust = 0;
-  float torque_x = 0;
-  float torque_y = 0;
-  float torque_z = 0;
-
-  // DEBUG_PRINT("=========================\n");
-  // DEBUG_PRINT("%f\n", (double)desired_state[3]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[6]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[7]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[8]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[9]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[10]);
-  // DEBUG_PRINT("%f\n", (double)desired_state[11]);
-  // DEBUG_PRINT("=======================\n");
-
-  fullState des_state_f = {current_state[0], current_state[1], current_state[2],
-                          current_state[3], current_state[4], current_state[5],
-                          current_state[6], current_state[7], current_state[8],
-                          current_state[9], current_state[10], current_state[11]};
-
-  DEBUG_PRINT("before uart sent %f", (double)state->velocity.x);
-  
-  sendDataUART("K", &des_state_f);
-  uart_packet receiverPacket;
-  if (receiveDataUART(&receiverPacket)) {
-    if (receiverPacket.serviceType == KOOPMAN_PACKET) {
-      handle_control_packet(&receiverPacket, &thrust, &torque_x, &torque_y, &torque_z);
-    }
-  }
-  
-  // Fill control_input with the received values
-  float control_input[4] = {0, 0, 0, 0}; 
-  control_input[0] = thrust;
-  control_input[1] = torque_x;
-  control_input[2] = torque_y;
-  control_input[3] = torque_z;
-
-
+  float control_input[4] = {0, 0, 0, 0};  
+  koopman_controller(current_state, desired_state, control_input);
   // if (setpoint->mode.z == modeDisable) {
   //   control->thrust = setpoint->thrust; // setpoint->thrust or 0?
   // } else {
@@ -211,6 +216,15 @@ void controllerKoopman(control_t *control, const setpoint_t *setpoint,
   quatz = setpoint->attitudeQuaternion.z;
   
 }
+
+PARAM_GROUP_START(Koopman)
+PARAM_ADD(PARAM_FLOAT, Kp1, &(Kp[0][0]))
+PARAM_ADD(PARAM_FLOAT, Kp2, &(Kp[1][1]))
+PARAM_ADD(PARAM_FLOAT, Kp3, &(Kp[2][2]))
+PARAM_ADD(PARAM_FLOAT, Ki1, &(Ki[0][0]))
+PARAM_ADD(PARAM_FLOAT, Ki2, &(Ki[1][1]))
+PARAM_ADD(PARAM_FLOAT, Ki3, &(Ki[2][2]))
+PARAM_GROUP_STOP(Koopman)
 
 LOG_GROUP_START(Koopman)
 LOG_ADD(LOG_FLOAT, cmd_thrust, &cmd_thrust_koop)

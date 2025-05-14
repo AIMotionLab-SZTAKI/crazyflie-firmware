@@ -366,6 +366,23 @@ typedef struct
   baro_t baro; // for legacy reasons
 } barometerMeasurement_t;
 
+typedef struct
+{
+  float x;
+  float y;
+  float z;
+  float vx;
+  float vy;
+  float vz;
+  float roll;
+  float pitch;
+  float yaw;
+  float roll_rate;
+  float pitch_rate;
+  float yaw_rate;
+} fullState;
+
+
 
 // Frequencies to bo used with the RATE_DO_EXECUTE_HZ macro. Do NOT use an arbitrary number.
 #define RATE_1000_HZ 1000

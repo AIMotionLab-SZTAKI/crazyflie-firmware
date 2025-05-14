@@ -1,0 +1,57 @@
+#ifndef __CONTROLLER_KOOPMAN_H__
+#define __CONTROLLER_KOOPMAN_H__
+
+#include "stabilizer_types.h"
+
+void setKoopmanParams(float params[], int param_num, uint16_t timestamp);
+void controllerKoopmanInit(void);
+bool controllerKoopmanTest(void);
+void controllerKoopmanReset(void);
+void KoopmanRegisterMemoryHandler(void);
+void controllerKoopman(control_t *control, const setpoint_t *setpoint,
+                                         const sensorData_t *sensors,
+                                         const state_t *state,
+                                         const uint32_t tick);
+
+void koopman_controller(float *current_state, float *desired_state, float *control_input);
+// void matrix_vector_multiply(const float *A, const float *x, float *result, int rows, int cols);
+
+// // Function to compute the Euclidean distance between two 3D points
+// float compute_distance(float *p_cur, float const *p_ref, int size);
+// float compute_squared_distance(float *p_cur, float const *p_ref, int size);
+
+// // Element-wise vector addition
+// void vector_addition(const float *v1, const float *v2, float *result, int size);
+
+// // Element-wise vector subtraction
+// void vector_subtraction(const float *v1, const float *v2, float *result, int size);
+
+// // Element-wise vector multiplication
+// void vector_multiplication(const float *v1, const float *v2, float *result, int size);
+
+// // Element-wise vector division
+// void vector_division(const float *v1, const float *v2, float *result, int size);
+
+// // Vector stacking function
+// void vector_stack(const float *v1, const float *v2, float *result, int size1, int size2);
+
+// // Vector copy
+// void vector_copy(const float *v, float *result, int size);
+
+// // Normalize vector
+// void vector_normalize(const float *v, const float *mean, const float *std, float *result, int size);
+
+// // Dennormalize vector
+// void vector_denormalize(const float *v, const float *mean, const float *std, float *result, int size);
+
+void extrinsic_xyz_to_rotation_matrix(const float angles[3], float R[3][3]);
+
+void scalar_first_quaternion_to_rotation_matrix(const float quaternion[4], float R[3][3]);
+
+void matrix_to_intrinsic_xyz(const float R[3][3], float angles[3]);
+
+void convert_state_extrinsic_intrinsic(float *current_state, float *desired_state);
+
+// void K_from_uint8_to_float(const uint8_t *K_uint8, const float *K_min, const float *K_range, float *K_float, int rows, int cols);
+
+#endif //__CONTROLLER_KOOPMAN_H__

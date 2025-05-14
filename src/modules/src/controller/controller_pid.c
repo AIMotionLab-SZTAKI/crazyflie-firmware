@@ -9,11 +9,18 @@
 #include "param.h"
 #include "math3d.h"
 
+// Communication module include
+#include "communication.h"
+#include "debug.h"
+
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
+#define COMMUNICATION_RATE 200
 
 static attitude_t attitudeDesired;
 static attitude_t rateDesired;
+static attitude_t rateDesired_ext;
 static float actuatorThrust;
+static float thrust_ext;
 
 static float cmd_thrust;
 static float cmd_roll;
@@ -23,6 +30,9 @@ static float r_roll;
 static float r_pitch;
 static float r_yaw;
 static float accelz;
+
+static uint8_t external_control = 1;
+
 
 void controllerPidInit(void)
 {
@@ -90,39 +100,66 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
     attitudeDesired.yaw = capAngle(attitudeDesired.yaw);
   }
 
-  if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
-    positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
+  if (RATE_DO_EXECUTE(COMMUNICATION_RATE, tick)) {
+    sendDataUART("C", &actuatorThrust, state);
+    
+    // float dummy1 = 12.34;
+    // float dummy2 = 345.12;
+    // sendDataUART("T", &actuatorThrust, &dummy1, &dummy2);
+    // float dummy1 = 12.34;
+    // float dummy2 = 345.12;
+    // sendDataUART("F", &actuatorThrust, &dummy1, &dummy2);
+    
+    uart_packet receiverPacket;
+    if (receiveDataUART(&receiverPacket)) {
+      if (receiverPacket.serviceType == CONTROL_PACKET) {
+        handle_control_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
+      } else if (receiverPacket.serviceType == FORWARDED_CONTROL_PACKET) {
+        handle_forwarded_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
+      }
+    }
+    
   }
 
-  if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
-    // Switch between manual and automatic position control
-    if (setpoint->mode.z == modeDisable) {
-      actuatorThrust = setpoint->thrust;
-    }
-    if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
-      attitudeDesired.roll = setpoint->attitude.roll;
-      attitudeDesired.pitch = setpoint->attitude.pitch;
-    }
+  // if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
+  //   positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
+  // }
 
-    attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw,
-                                attitudeDesired.roll, attitudeDesired.pitch, attitudeDesired.yaw,
-                                &rateDesired.roll, &rateDesired.pitch, &rateDesired.yaw);
+  if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+  //   // Switch between manual and automatic position control
+  //   if (setpoint->mode.z == modeDisable) {
+  //     actuatorThrust = setpoint->thrust;
+  //   }
+  //   if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
+  //     attitudeDesired.roll = setpoint->attitude.roll;
+  //     attitudeDesired.pitch = setpoint->attitude.pitch;
+  //   }
+
+    // attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw,
+    //                             attitudeDesired.roll, attitudeDesired.pitch, attitudeDesired.yaw,
+    //                             &rateDesired.roll, &rateDesired.pitch, &rateDesired.yaw);
 
     // For roll and pitch, if velocity mode, overwrite rateDesired with the setpoint
     // value. Also reset the PID to avoid error buildup, which can lead to unstable
     // behavior if level mode is engaged later
-    if (setpoint->mode.roll == modeVelocity) {
-      rateDesired.roll = setpoint->attitudeRate.roll;
-      attitudeControllerResetRollAttitudePID();
-    }
-    if (setpoint->mode.pitch == modeVelocity) {
-      rateDesired.pitch = setpoint->attitudeRate.pitch;
-      attitudeControllerResetPitchAttitudePID();
-    }
+    // if (setpoint->mode.roll == modeVelocity) {
+    //   rateDesired.roll = setpoint->attitudeRate.roll;
+    //   attitudeControllerResetRollAttitudePID();
+    // }
+    // if (setpoint->mode.pitch == modeVelocity) {
+    //   rateDesired.pitch = setpoint->attitudeRate.pitch;
+    //   attitudeControllerResetPitchAttitudePID();
+    // }
 
     // TODO: Investigate possibility to subtract gyro drift.
-    attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z,
-                             rateDesired.roll, rateDesired.pitch, rateDesired.yaw);
+    if (external_control) {
+      attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z,
+                             rateDesired_ext.roll, rateDesired_ext.pitch, rateDesired_ext.yaw);
+    } 
+    // else {
+    //   attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z,
+    //                          rateDesired.roll, rateDesired.pitch, rateDesired.yaw);
+    // }
 
     attitudeControllerGetActuatorOutput(&control->roll,
                                         &control->pitch,
@@ -140,7 +177,12 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
     accelz = sensors->acc.z;
   }
 
-  control->thrust = actuatorThrust;
+  if (external_control) {
+   control->thrust = thrust_ext;
+  } 
+  // else {
+  //   control->thrust = actuatorThrust;
+  // }
 
   if (control->thrust == 0)
   {
@@ -227,4 +269,12 @@ LOG_ADD(LOG_FLOAT, pitchRate, &rateDesired.pitch)
  * @brief Desired yaw rate setpoint
  */
 LOG_ADD(LOG_FLOAT, yawRate,   &rateDesired.yaw)
+LOG_ADD(LOG_FLOAT, rollRate_ext,  &rateDesired_ext.roll)
+LOG_ADD(LOG_FLOAT, pitchRate_ext, &rateDesired_ext.pitch)
+LOG_ADD(LOG_FLOAT, yawRate_ext,   &rateDesired_ext.yaw)
+LOG_ADD(LOG_FLOAT, thrust_ext,   &thrust_ext)
 LOG_GROUP_STOP(controller)
+
+PARAM_GROUP_START(pid)
+PARAM_ADD(PARAM_UINT8, external_control, &external_control)
+PARAM_GROUP_STOP(pid)
