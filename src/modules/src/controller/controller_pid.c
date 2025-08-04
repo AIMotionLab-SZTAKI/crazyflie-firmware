@@ -12,6 +12,9 @@
 // Communication module include
 #include "communication.h"
 
+// Stabilizer include to be able to switch into emergency mode
+#include "stabilizer.h"
+
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 #define COMMUNICATION_RATE RATE_100_HZ
 
@@ -20,6 +23,8 @@ static attitude_t rateDesired;
 static attitude_t rateDesired_ext;
 static float actuatorThrust;
 static float thrust_ext;
+static float status_ext;  // status flag of external control input
+static int fail_counter;  // number of subsequent invalid external control inputs 
 
 static float cmd_thrust;
 static float cmd_roll;
@@ -32,6 +37,7 @@ static float accelz;
 
 static uint8_t external_control = 0;
 
+static bool enable_uart_comm = true;
 
 void controllerPidInit(void)
 {
@@ -100,24 +106,36 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
   }
 
   if (RATE_DO_EXECUTE(COMMUNICATION_RATE, tick)) {
-    /*
-    sendDataUART("C", &actuatorThrust, state);
-    float dummy1 = 12.34;
-    float dummy2 = 345.12;
-    sendDataUART("T", &actuatorThrust, &dummy1, &dummy2);
-    */
-    float dummy1 = 12.34;
-    float dummy2 = 345.12;
-    sendDataUART("F", &actuatorThrust, &dummy1, &dummy2);
-    uart_packet receiverPacket;
-    if (receiveDataUART(&receiverPacket)) {
-      if (receiverPacket.serviceType == CONTROL_PACKET) {
-        handle_control_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
-      } else if (receiverPacket.serviceType == FORWARDED_CONTROL_PACKET) {
-        handle_forwarded_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
+    if (enable_uart_comm) {
+      /*sendDataUART("C", &actuatorThrust, state);
+      float dummy1 = 12.34;
+      float dummy2 = 345.12;
+      sendDataUART("T", &actuatorThrust, &dummy1, &dummy2);
+      */
+      float dummy1 = 12.34;
+      float dummy2 = 345.12;
+      sendDataUART("F", &actuatorThrust, &dummy1, &dummy2);
+      uart_packet receiverPacket;
+      if (receiveDataUART(&receiverPacket)) {
+        if (receiverPacket.serviceType == CONTROL_PACKET) {
+          handle_control_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw);
+        } else if (receiverPacket.serviceType == FORWARDED_CONTROL_PACKET) {
+          handle_forwarded_packet(&receiverPacket, &thrust_ext, &rateDesired_ext.roll, &rateDesired_ext.pitch, &rateDesired_ext.yaw, &status_ext);
+          if (status_ext > 0.5f) { // invalid control input
+            fail_counter += 1;
+          } else {
+            fail_counter = 0;
+          }
+        }
+      } else if (external_control) { // communication not successful but still trying to control externally
+        fail_counter += 15;
+      }
+
+      if (fail_counter >= 20) {
+        stabilizerSetEmergencyStop();  // switching to emergency mode
+        // maybe later we could just disable uart communication and find a safe setpoint for PID
       }
     }
-    
   }
 
   if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
@@ -175,11 +193,14 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
     accelz = sensors->acc.z;
   }
 
-  //if (external_control) {
-  //  control->thrust = thrust_ext;
-  //} else {
+  if (external_control) {
+    float thrust_scaled = 89528.0f * thrust_ext;
+    if (thrust_scaled < 0.0f) control->thrust = 0;
+    else if (thrust_scaled > 65535.0f) control->thrust = 65535;
+    else control->thrust = (uint16_t)thrust_scaled;
+  } else {
     control->thrust = actuatorThrust;
-  //}
+  }
 
   if (control->thrust == 0)
   {
