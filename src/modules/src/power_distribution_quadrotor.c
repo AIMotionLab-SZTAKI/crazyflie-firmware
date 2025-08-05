@@ -34,6 +34,9 @@
 #include "config.h"
 #include "math.h"
 
+// PID controller for adaptive center of mass alignment
+#include "controller_pid.h"
+
 #ifndef CONFIG_MOTORS_DEFAULT_IDLE_THRUST
 #  define DEFAULT_IDLE_THRUST 0
 #else
@@ -47,6 +50,9 @@ static float thrustToTorque = 0.005964552f;
 // thrust = a * pwm^2 + b * pwm
 static float pwmToThrustA = 0.091492681f;
 static float pwmToThrustB = 0.067673604f;
+
+static float com_shift_x = 0.0f;
+static float com_shift_y = 0.0f;
 
 int powerDistributionMotorType(uint32_t id)
 {
@@ -81,10 +87,16 @@ static void powerDistributionLegacy(const control_t *control, motors_thrust_unca
   int16_t r = control->roll / 2.0f;
   int16_t p = control->pitch / 2.0f;
 
-  motorThrustUncapped->motors.m1 = control->thrust - r + p + control->yaw;
-  motorThrustUncapped->motors.m2 = control->thrust - r - p - control->yaw;
-  motorThrustUncapped->motors.m3 = control->thrust + r - p + control->yaw;
-  motorThrustUncapped->motors.m4 = control->thrust + r + p - control->yaw;
+  getComShift(&com_shift_x, &com_shift_y);
+  const float arm = 0.707106781f * armLength;
+  float d1 = (arm + com_shift_x - com_shift_y) / arm;
+  float d2 = (arm - com_shift_x - com_shift_y) / arm;
+  float d3 = (arm - com_shift_x + com_shift_y) / arm;
+  float d4 = (arm + com_shift_x + com_shift_y) / arm;
+  motorThrustUncapped->motors.m1 = (uint16_t)(d1 * (float)control->thrust) - r + p + control->yaw;
+  motorThrustUncapped->motors.m2 = (uint16_t)(d2 * (float)control->thrust) - r - p - control->yaw;
+  motorThrustUncapped->motors.m3 = (uint16_t)(d3 * (float)control->thrust) + r - p + control->yaw;
+  motorThrustUncapped->motors.m4 = (uint16_t)(d4 * (float)control->thrust) + r + p - control->yaw;
 }
 
 static void powerDistributionForceTorque(const control_t *control, motors_thrust_uncapped_t* motorThrustUncapped) {
